@@ -774,6 +774,60 @@ export class AppController {
   }
 
   // ============================================
+  // Cache
+  // ============================================
+
+  /**
+   * Get snapshot cache statistics
+   */
+  async getCacheStats(): Promise<{
+    hits: number;
+    misses: number;
+    size: number;
+    enabled: boolean;
+    maxAge: number;
+    version: number;
+  }> {
+    if (!this.bridgeServer?.hasConnections()) {
+      return {
+        hits: 0,
+        misses: 0,
+        size: 0,
+        enabled: false,
+        maxAge: 0,
+        version: 0,
+      };
+    }
+
+    try {
+      return await this.bridgeServer.getCacheStats();
+    } catch {
+      log.debug('Failed to get cache stats from bridge');
+      return {
+        hits: 0,
+        misses: 0,
+        size: 0,
+        enabled: false,
+        maxAge: 0,
+        version: 0,
+      };
+    }
+  }
+
+  /**
+   * Invalidate the snapshot cache
+   */
+  async invalidateCache(): Promise<void> {
+    if (this.bridgeServer?.hasConnections()) {
+      try {
+        await this.bridgeServer.invalidateCache();
+      } catch {
+        log.debug('Failed to invalidate cache via bridge');
+      }
+    }
+  }
+
+  // ============================================
   // Utils
   // ============================================
 

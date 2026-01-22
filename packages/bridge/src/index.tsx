@@ -10,6 +10,7 @@ export { useNetworkTracking } from './hooks/useNetworkTracking';
 export { useSupabaseTracking } from './network/supabase';
 export { useConvexTracking } from './network/convex';
 export { AccessibilityTreeBuilder } from './accessibility/tree-builder';
+export { SnapshotCache, type CacheConfig, type CacheStats, type CachedSnapshot } from './cache/snapshot-cache';
 
 export type {
   AgentBridgeConfig,

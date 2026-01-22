@@ -319,4 +319,25 @@ export class BridgeServer {
   async clearMocks(): Promise<void> {
     await this.request('clearMocks');
   }
+
+  /**
+   * Get snapshot cache statistics
+   */
+  async getCacheStats(): Promise<{
+    hits: number;
+    misses: number;
+    size: number;
+    enabled: boolean;
+    maxAge: number;
+    version: number;
+  }> {
+    return this.request('cacheStats');
+  }
+
+  /**
+   * Invalidate the snapshot cache
+   */
+  async invalidateCache(): Promise<void> {
+    await this.request('cacheInvalidate');
+  }
 }

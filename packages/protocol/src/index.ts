@@ -53,6 +53,8 @@ export {
   PressKeyCommand,
   StatusCommand,
   PingCommand,
+  CacheStatsCommand,
+  CacheInvalidateCommand,
   // Utilities
   parseCommand,
   safeParseCommand,
@@ -99,6 +101,8 @@ export {
   type PressKeyCommandType,
   type StatusCommandType,
   type PingCommandType,
+  type CacheStatsCommandType,
+  type CacheInvalidateCommandType,
 } from './commands.js';
 
 // Responses

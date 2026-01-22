@@ -86,6 +86,10 @@ export interface EnhancedSnapshot {
   viewport: { width: number; height: number };
   route?: string;
   timestamp: string;
+  /** Whether this snapshot came from cache */
+  fromCache?: boolean;
+  /** Cache version when snapshot was created */
+  cacheVersion?: number;
 }
 
 export interface SnapshotOptions {
@@ -97,6 +101,10 @@ export interface SnapshotOptions {
   maxDepth?: number;
   /** Filter out off-screen elements */
   visibleOnly?: boolean;
+  /** Force fresh snapshot, bypassing cache */
+  fresh?: boolean;
+  /** Override default cache max age (ms) */
+  maxCacheAge?: number;
 }
 
 export interface NetworkRequest {

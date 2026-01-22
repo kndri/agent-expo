@@ -44,6 +44,8 @@ export const SnapshotCommand = BaseCommand.extend({
   maxDepth: z.number().optional(), // Limit tree depth
   withScreenshot: z.boolean().optional(), // Include base64 screenshot
   native: z.boolean().optional(), // Use native accessibility APIs instead of bridge
+  fresh: z.boolean().optional(), // Force fresh snapshot, bypassing cache
+  maxCacheAge: z.number().optional(), // Override default cache max age (ms)
 });
 
 // ============================================
@@ -359,6 +361,18 @@ export const PingCommand = BaseCommand.extend({
 });
 
 // ============================================
+// Cache Commands
+// ============================================
+
+export const CacheStatsCommand = BaseCommand.extend({
+  action: z.literal('cacheStats'),
+});
+
+export const CacheInvalidateCommand = BaseCommand.extend({
+  action: z.literal('cacheInvalidate'),
+});
+
+// ============================================
 // Union of all commands
 // ============================================
 
@@ -418,6 +432,9 @@ export const Command = z.discriminatedUnion('action', [
   // Status
   StatusCommand,
   PingCommand,
+  // Cache
+  CacheStatsCommand,
+  CacheInvalidateCommand,
 ]);
 
 export type Command = z.infer<typeof Command>;
@@ -465,6 +482,8 @@ export type KeyboardCommandType = z.infer<typeof KeyboardCommand>;
 export type PressKeyCommandType = z.infer<typeof PressKeyCommand>;
 export type StatusCommandType = z.infer<typeof StatusCommand>;
 export type PingCommandType = z.infer<typeof PingCommand>;
+export type CacheStatsCommandType = z.infer<typeof CacheStatsCommand>;
+export type CacheInvalidateCommandType = z.infer<typeof CacheInvalidateCommand>;
 
 /**
  * Parse and validate a command from JSON string or object

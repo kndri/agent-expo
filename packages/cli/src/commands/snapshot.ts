@@ -17,6 +17,8 @@ export function registerSnapshotCommand(program: Commander, client: DaemonClient
     .option('--max-depth <depth>', 'Maximum tree depth', parseInt)
     .option('--with-screenshot', 'Include base64 screenshot')
     .option('-n, --native', 'Use native accessibility APIs (idb/adb) instead of bridge')
+    .option('-f, --fresh', 'Force fresh snapshot, bypassing cache')
+    .option('--max-cache-age <ms>', 'Override default cache max age (ms)', parseInt)
     .action(async (opts) => {
       const command: SnapshotCommandType = {
         id: uuid(),
@@ -26,6 +28,8 @@ export function registerSnapshotCommand(program: Commander, client: DaemonClient
         maxDepth: opts.maxDepth,
         withScreenshot: opts.withScreenshot,
         native: opts.native,
+        fresh: opts.fresh,
+        maxCacheAge: opts.maxCacheAge,
       };
 
       const response = await client.send(command);

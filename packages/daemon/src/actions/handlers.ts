@@ -78,6 +78,8 @@ import type {
   PressKeyCommandType,
   StatusCommandType,
   PingCommandType,
+  CacheStatsCommandType,
+  CacheInvalidateCommandType,
 } from '@agent-expo/protocol';
 import { success, error, ErrorCode } from '@agent-expo/protocol';
 import type { AppController } from '../app-controller.js';
@@ -155,6 +157,8 @@ type HandlerMap = {
   pressKey: Handler<PressKeyCommandType, { pressed: true }>;
   status: Handler<StatusCommandType, StatusResponseData>;
   ping: Handler<PingCommandType, PingResponseData>;
+  cacheStats: Handler<CacheStatsCommandType, { hits: number; misses: number; size: number; enabled: boolean; maxAge: number; version: number }>;
+  cacheInvalidate: Handler<CacheInvalidateCommandType, { invalidated: true }>;
 };
 
 const handlers: HandlerMap = {
@@ -611,5 +615,19 @@ const handlers: HandlerMap = {
       pong: true,
       timestamp: new Date().toISOString(),
     });
+  },
+
+  // ============================================
+  // Cache
+  // ============================================
+
+  async cacheStats(command, controller) {
+    const stats = await controller.getCacheStats();
+    return success(command.id, stats);
+  },
+
+  async cacheInvalidate(command, controller) {
+    await controller.invalidateCache();
+    return success(command.id, { invalidated: true });
   },
 };

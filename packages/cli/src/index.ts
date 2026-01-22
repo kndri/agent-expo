@@ -15,6 +15,7 @@ import { registerNetworkCommands } from './commands/network.js';
 import { registerAssertCommands } from './commands/assert.js';
 import { registerScreenshotCommands } from './commands/screenshot.js';
 import { registerStatusCommands } from './commands/status.js';
+import { registerCacheCommands } from './commands/cache.js';
 import { handleError, type OutputOptions } from './output.js';
 
 export function createCLI(): Command {
@@ -54,6 +55,7 @@ export async function runCLI(args: string[] = process.argv): Promise<void> {
   registerAssertCommands(program, client, outputOptions);
   registerScreenshotCommands(program, client, outputOptions);
   registerStatusCommands(program, client, outputOptions);
+  registerCacheCommands(program, client, outputOptions);
 
   // Add hook to update output options and log level after parsing
   program.hook('preAction', (thisCommand) => {

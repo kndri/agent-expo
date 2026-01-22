@@ -23,10 +23,12 @@ import type {
   SupabaseCall,
   ConvexCall,
   MockConfig,
+  SnapshotOptions,
 } from './types';
 import { AccessibilityTreeBuilder } from './accessibility/tree-builder';
 import { NetworkInterceptor } from './network/interceptor';
 import { ExponentialBackoff, type BackoffConfig } from './utils/backoff';
+import { SnapshotCache, type CacheStats } from './cache/snapshot-cache';
 
 const DEFAULT_PORT = 8765;
 
@@ -48,6 +50,7 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
   const wsRef = useRef<WebSocket | null>(null);
   const treeBuilderRef = useRef(new AccessibilityTreeBuilder());
   const networkInterceptorRef = useRef(new NetworkInterceptor());
+  const snapshotCacheRef = useRef(new SnapshotCache());
   const requestsRef = useRef<TrackedRequest[]>([]);
   const supabaseCallsRef = useRef<SupabaseCall[]>([]);
   const convexCallsRef = useRef<ConvexCall[]>([]);
@@ -167,6 +170,36 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
     };
   }, [shouldEnable, config.trackNetwork]);
 
+  // Hook into React DevTools to detect UI changes and invalidate cache
+  useEffect(() => {
+    if (!shouldEnable) return;
+
+    const hook = (global as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+    if (!hook) {
+      console.log('[AgentBridge] React DevTools hook not available, cache invalidation will use timeout only');
+      return;
+    }
+
+    // Store original function
+    const originalOnCommitFiberRoot = hook.onCommitFiberRoot;
+
+    // Wrap to detect UI updates
+    hook.onCommitFiberRoot = (...args: unknown[]) => {
+      // Invalidate snapshot cache on any React commit (UI update)
+      snapshotCacheRef.current.invalidate();
+
+      // Call original if exists
+      if (originalOnCommitFiberRoot) {
+        return originalOnCommitFiberRoot.apply(hook, args);
+      }
+    };
+
+    return () => {
+      // Restore original
+      hook.onCommitFiberRoot = originalOnCommitFiberRoot;
+    };
+  }, [shouldEnable]);
+
   // Send response back to daemon (defined early so handleMessage can use it)
   const sendResponse = useCallback(
     (id: string, success: boolean, data?: unknown, error?: string) => {
@@ -181,13 +214,37 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
   const handleSnapshotRequest = useCallback(
     async (message: BridgeMessage) => {
       try {
-        const payload = message.payload as { interactive?: boolean; compact?: boolean; maxDepth?: number } | undefined;
+        const payload = message.payload as SnapshotOptions | undefined;
+        const cache = snapshotCacheRef.current;
+
+        // Update cache config if maxCacheAge provided
+        if (payload?.maxCacheAge !== undefined) {
+          cache.configure({ maxAge: payload.maxCacheAge });
+        }
+
+        // Force fresh snapshot if requested
+        if (payload?.fresh) {
+          cache.invalidate();
+        }
+
+        // Try to get from cache first
+        const cached = cache.get();
+        if (cached) {
+          sendResponse(message.id, true, cached);
+          return;
+        }
+
+        // Build fresh snapshot
         const snapshot = await treeBuilderRef.current.buildSnapshotAsync({
           interactive: payload?.interactive,
           compact: payload?.compact,
           maxDepth: payload?.maxDepth,
+          visibleOnly: payload?.visibleOnly,
         });
-        sendResponse(message.id, true, snapshot);
+
+        // Store in cache and return
+        const cachedSnapshot = cache.set(snapshot);
+        sendResponse(message.id, true, cachedSnapshot);
       } catch (error) {
         sendResponse(message.id, false, undefined, String(error));
       }
@@ -272,6 +329,25 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
     [sendResponse]
   );
 
+  // Handle cache stats request
+  const handleCacheStatsRequest = useCallback(
+    (message: BridgeMessage) => {
+      const stats = snapshotCacheRef.current.getStats();
+      const config = snapshotCacheRef.current.getConfig();
+      sendResponse(message.id, true, { stats, config });
+    },
+    [sendResponse]
+  );
+
+  // Handle cache invalidate request
+  const handleCacheInvalidateRequest = useCallback(
+    (message: BridgeMessage) => {
+      snapshotCacheRef.current.invalidate();
+      sendResponse(message.id, true, { invalidated: true });
+    },
+    [sendResponse]
+  );
+
   // Handle incoming messages
   const handleMessage = useCallback((data: string) => {
     try {
@@ -308,6 +384,12 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
         case 'clearMocks':
           handleClearMocksRequest(message);
           break;
+        case 'cacheStats':
+          handleCacheStatsRequest(message);
+          break;
+        case 'cacheInvalidate':
+          handleCacheInvalidateRequest(message);
+          break;
         default:
           sendResponse(message.id, false, undefined, `Unknown message type: ${message.type}`);
       }
@@ -325,6 +407,8 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
     handleGetConvexCallsRequest,
     handleMockRequest,
     handleClearMocksRequest,
+    handleCacheStatsRequest,
+    handleCacheInvalidateRequest,
     sendResponse,
   ]);
 
