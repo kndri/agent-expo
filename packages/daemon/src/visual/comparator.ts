@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
+import { Errors } from '@agent-expo/protocol';
 
 export interface ComparisonResult {
   matched: boolean;
@@ -90,7 +91,7 @@ export class VisualComparator {
     const baselineBuffer = this.loadBaseline(name);
 
     if (!baselineBuffer) {
-      throw new Error(`Baseline "${name}" not found. Save baseline first with: agent-expo screenshot save "${name}"`);
+      throw Errors.BASELINE_NOT_FOUND(name);
     }
 
     // Parse PNG images
@@ -159,7 +160,7 @@ export class VisualComparator {
     const baselineBuffer = this.loadBaseline(name);
 
     if (!baselineBuffer) {
-      throw new Error(`Baseline "${name}" not found`);
+      throw Errors.BASELINE_NOT_FOUND(name);
     }
 
     const baseline = PNG.sync.read(baselineBuffer);

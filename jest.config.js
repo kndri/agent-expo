@@ -6,6 +6,8 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts', '**/*.spec.ts'],
   moduleNameMapper: {
     '^@agent-expo/(.*)$': '<rootDir>/packages/$1/src',
+    // Handle .js extension in imports (for ESM compat)
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   // Transform ESM modules that Jest can't parse (handle pnpm nested structure)
   transformIgnorePatterns: [

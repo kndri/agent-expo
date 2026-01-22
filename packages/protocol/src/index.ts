@@ -147,3 +147,6 @@ export {
   type StatusResponseData,
   type PingResponseData,
 } from './responses.js';
+
+// Errors
+export { AgentExpoError, isAgentExpoError, Errors } from './errors/index.js';

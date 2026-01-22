@@ -7,6 +7,7 @@
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuid } from 'uuid';
+import { Errors } from '@agent-expo/protocol';
 import type { AppController } from '../app-controller.js';
 
 const DEFAULT_BRIDGE_PORT = 8765;
@@ -173,7 +174,7 @@ export class BridgeServer {
   async request<T>(type: string, payload?: unknown, timeoutMs: number = 10000): Promise<T> {
     const client = this.getActiveClient();
     if (!client) {
-      throw new Error('No bridge connected');
+      throw Errors.BRIDGE_NOT_CONNECTED();
     }
 
     const id = uuid();

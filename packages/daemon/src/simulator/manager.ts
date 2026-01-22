@@ -4,7 +4,7 @@
  * Provides a unified interface for controlling iOS and Android devices
  */
 
-import type { Device, Platform, Point, Bounds } from '@agent-expo/protocol';
+import { Errors, type Device, type Platform, type Point, type Bounds } from '@agent-expo/protocol';
 import { IOSSimulatorManager } from './ios.js';
 import { AndroidEmulatorManager, KeyCode } from './android.js';
 
@@ -88,7 +88,7 @@ export class DeviceManager {
     const device = devices.find((d) => d.id === id);
 
     if (!device) {
-      throw new Error(`Device ${id} not found after boot`);
+      throw Errors.DEVICE_NOT_FOUND(id);
     }
 
     this.activeDevice = device;
@@ -271,7 +271,7 @@ export class DeviceManager {
       if (keycode) {
         await this.androidManager.pressKey(keycode, this.activeDevice!.id);
       } else {
-        throw new Error(`Unknown key: ${key}`);
+        throw Errors.UNKNOWN_KEY(key);
       }
     }
   }
@@ -285,7 +285,7 @@ export class DeviceManager {
     if (this.activePlatform === 'ios') {
       // iOS doesn't have a back button, this is a no-op or could trigger swipe back
       // For now, we'll throw an informative error
-      throw new Error('iOS does not have a hardware back button. Use navigation within the app.');
+      throw Errors.IOS_BACK_BUTTON();
     } else {
       await this.androidManager.pressBack(this.activeDevice!.id);
     }
@@ -373,7 +373,7 @@ export class DeviceManager {
    */
   private ensureActiveDevice(): void {
     if (!this.activeDevice || !this.activePlatform) {
-      throw new Error('No active device. Call boot() first.');
+      throw Errors.NO_ACTIVE_DEVICE();
     }
   }
 

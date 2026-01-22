@@ -7,12 +7,13 @@
 
 import WebSocket from 'ws';
 import { v4 as uuid } from 'uuid';
-import type {
-  EnhancedSnapshot,
-  TrackedRequest,
-  SupabaseCall,
-  ConvexCall,
-  MockConfig,
+import {
+  Errors,
+  type EnhancedSnapshot,
+  type TrackedRequest,
+  type SupabaseCall,
+  type ConvexCall,
+  type MockConfig,
 } from '@agent-expo/protocol';
 
 const DEFAULT_PORT = 8765;
@@ -157,7 +158,7 @@ export class BridgeConnection {
    */
   private async request<T>(type: string, payload?: unknown): Promise<T> {
     if (!this.isConnected()) {
-      throw new Error('Bridge not connected');
+      throw Errors.BRIDGE_NOT_CONNECTED();
     }
 
     const id = uuid();

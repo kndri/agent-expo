@@ -16,6 +16,7 @@
   "dependencies": {
     "@agent-expo/protocol": "workspace:*",
     "@types/uuid": "^9.0.7",
+    "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "uuid": "^9.0.1"
   },

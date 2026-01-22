@@ -9,8 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { spawn } from 'child_process';
-import type { Response } from '@agent-expo/protocol';
-import { parseResponse } from '@agent-expo/protocol';
+import { Errors, parseResponse, type Response } from '@agent-expo/protocol';
 
 const DEFAULT_PORT = 9876;
 const CONNECTION_TIMEOUT = 5000;
@@ -97,7 +96,7 @@ export class DaemonClient {
       await this.sleep(200);
     }
 
-    throw new Error('Failed to start daemon');
+    throw Errors.DAEMON_START_FAILED();
   }
 
   /**
@@ -117,7 +116,7 @@ export class DaemonClient {
       // Not found in node_modules
     }
 
-    throw new Error('Could not find daemon script. Make sure @agent-expo/daemon is installed.');
+    throw Errors.DAEMON_SCRIPT_NOT_FOUND();
   }
 
   /**
@@ -216,7 +215,7 @@ export class DaemonClient {
     await this.connect();
 
     if (!this.socket) {
-      throw new Error('Not connected');
+      throw Errors.DAEMON_NOT_RUNNING();
     }
 
     return new Promise((resolve, reject) => {

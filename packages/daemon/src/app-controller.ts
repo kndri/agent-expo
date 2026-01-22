@@ -6,19 +6,20 @@
  */
 
 import { v4 as uuid } from 'uuid';
-import type {
-  Device,
-  Platform,
-  EnhancedSnapshot,
-  RefMap,
-  RefEntry,
-  TrackedRequest,
-  SupabaseCall,
-  ConvexCall,
-  AssertionResult,
-  Viewport,
-  ScrollDirection,
-  Point,
+import {
+  Errors,
+  type Device,
+  type Platform,
+  type EnhancedSnapshot,
+  type RefMap,
+  type RefEntry,
+  type TrackedRequest,
+  type SupabaseCall,
+  type ConvexCall,
+  type AssertionResult,
+  type Viewport,
+  type ScrollDirection,
+  type Point,
 } from '@agent-expo/protocol';
 import { DeviceManager } from './simulator/index.js';
 import type { BridgeServer } from './bridge/server.js';
@@ -285,7 +286,7 @@ export class AppController {
   async tap(ref: string, options: TapOptions = {}): Promise<void> {
     const point = this.getTapPoint(ref);
     if (!point) {
-      throw new Error(`Ref not found: ${ref}`);
+      throw Errors.ELEMENT_NOT_FOUND(ref);
     }
 
     const count = options.count || 1;
@@ -323,7 +324,7 @@ export class AppController {
       // Try via bridge
       await this.bridgeServer.tapByTestID(testID);
     } else {
-      throw new Error(`Element with testID "${testID}" not found`);
+      throw Errors.ELEMENT_NOT_FOUND_BY_TESTID(testID);
     }
   }
 
@@ -363,7 +364,7 @@ export class AppController {
     } else {
       // Select all and delete - platform specific
       // This is a simplification
-      throw new Error('Clear requires bridge connection');
+      throw Errors.BRIDGE_REQUIRED('clear');
     }
   }
 
@@ -523,7 +524,7 @@ export class AppController {
    */
   async mockResponse(pattern: string, response: object): Promise<void> {
     if (!this.bridgeServer?.hasConnections()) {
-      throw new Error('Mock requires bridge connection');
+      throw Errors.BRIDGE_REQUIRED('mock');
     }
     await this.bridgeServer.addMock(pattern, response);
   }

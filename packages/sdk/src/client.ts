@@ -7,17 +7,18 @@
 import * as net from 'net';
 import * as path from 'path';
 import * as os from 'os';
-import type {
-  Command,
-  Response,
-  Platform,
-  Device,
-  EnhancedSnapshot,
-  TrackedRequest,
-  SupabaseCall,
-  ConvexCall,
-  AssertionResult,
-  ScrollDirection,
+import {
+  Errors,
+  type Command,
+  type Response,
+  type Platform,
+  type Device,
+  type EnhancedSnapshot,
+  type TrackedRequest,
+  type SupabaseCall,
+  type ConvexCall,
+  type AssertionResult,
+  type ScrollDirection,
 } from '@agent-expo/protocol';
 
 export interface ClientConfig {
@@ -145,7 +146,7 @@ export class AgentExpoClient {
     await this.connect();
 
     if (!this.socket) {
-      throw new Error('Not connected');
+      throw Errors.SDK_NOT_CONNECTED();
     }
 
     return new Promise((resolve, reject) => {

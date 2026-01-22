@@ -5,13 +5,14 @@
  * This is the fallback when bridge is not available.
  */
 
-import type {
-  AccessibilityNode,
-  EnhancedSnapshot,
-  RefMap,
-  RefEntry,
-  Viewport,
-  AccessibilityRole,
+import {
+  Errors,
+  type AccessibilityNode,
+  type EnhancedSnapshot,
+  type RefMap,
+  type RefEntry,
+  type Viewport,
+  type AccessibilityRole,
 } from '@agent-expo/protocol';
 import type { DeviceManager } from '../simulator/manager.js';
 
@@ -67,7 +68,7 @@ export class SnapshotEngine {
     const platform = deviceManager.getActivePlatform();
 
     if (!platform) {
-      throw new Error('No active device');
+      throw Errors.NO_ACTIVE_DEVICE();
     }
 
     // Get the raw accessibility data

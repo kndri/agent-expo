@@ -2,7 +2,8 @@
  * Output formatting utilities
  */
 
-import type { Response } from '@agent-expo/protocol';
+import chalk from 'chalk';
+import { isAgentExpoError, type AgentExpoError, type Response } from '@agent-expo/protocol';
 
 export interface OutputOptions {
   json: boolean;
@@ -95,7 +96,33 @@ function printSuccess(data: unknown): void {
  * Print error message
  */
 function printError(message: string): void {
-  console.error(`Error: ${message}`);
+  console.error(chalk.red(`Error: ${message}`));
+}
+
+/**
+ * Print an AgentExpoError with full formatting
+ */
+export function printAgentError(error: AgentExpoError): void {
+  console.error(chalk.red(`\n[${error.code}] ${error.message}`));
+  console.error(chalk.yellow(`\nHint: ${error.hint}`));
+  if (error.docs) {
+    console.error(chalk.blue(`\nDocs: ${error.docs}`));
+  }
+  console.error(''); // Empty line for readability
+}
+
+/**
+ * Handle errors in CLI commands
+ */
+export function handleError(error: unknown): void {
+  if (isAgentExpoError(error)) {
+    printAgentError(error);
+  } else if (error instanceof Error) {
+    console.error(chalk.red(`Error: ${error.message}`));
+  } else {
+    console.error(chalk.red(`Error: ${String(error)}`));
+  }
+  process.exit(1);
 }
 
 /**

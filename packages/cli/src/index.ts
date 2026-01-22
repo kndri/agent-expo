@@ -14,7 +14,7 @@ import { registerNetworkCommands } from './commands/network.js';
 import { registerAssertCommands } from './commands/assert.js';
 import { registerScreenshotCommands } from './commands/screenshot.js';
 import { registerStatusCommands } from './commands/status.js';
-import type { OutputOptions } from './output.js';
+import { handleError, type OutputOptions } from './output.js';
 
 export function createCLI(): Command {
   const program = new Command();
@@ -65,8 +65,18 @@ export async function runCLI(args: string[] = process.argv): Promise<void> {
     client.disconnect();
   });
 
+  // Configure error handling
+  program.configureOutput({
+    writeErr: (str) => process.stderr.write(str),
+    outputError: (str, write) => write(str),
+  });
+
   // Parse and execute
-  await program.parseAsync(args, { from: 'node' });
+  try {
+    await program.parseAsync(args, { from: 'node' });
+  } catch (error) {
+    handleError(error);
+  }
 }
 
 export { DaemonClient } from './daemon-client.js';
