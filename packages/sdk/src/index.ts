@@ -16,4 +16,10 @@ export {
   type ToolCall,
   type ToolResult,
 } from './ai-tools.js';
-export type { ClientConfig, ClientStatus } from './client.js';
+export {
+  startDaemon,
+  stopDaemon,
+  isDaemonRunning,
+  type DaemonStartOptions,
+} from './daemon-starter.js';
+export type { ClientConfig, ClientStatus, ConnectOptions } from './client.js';

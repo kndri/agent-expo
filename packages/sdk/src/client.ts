@@ -25,6 +25,8 @@ import {
   type ScrollDirection,
 } from '@agent-expo/protocol';
 
+import { startDaemon, isDaemonRunning, stopDaemon, type DaemonStartOptions } from './daemon-starter.js';
+
 const log = logger.child('sdk');
 
 export interface ClientConfig {
@@ -32,10 +34,19 @@ export interface ClientConfig {
   session?: string;
   /** TCP port (for Windows or remote connection) */
   port?: number;
-  /** Auto-start daemon if not running */
+  /** Auto-start daemon if not running (deprecated, use connect options instead) */
   autoStartDaemon?: boolean;
   /** Connection retry options */
   retry?: Partial<BackoffConfig>;
+}
+
+export interface ConnectOptions {
+  /** Auto-start daemon if not running */
+  autoStart?: boolean;
+  /** How long to wait for daemon to start (ms) */
+  startTimeout?: number;
+  /** Custom path to daemon executable */
+  daemonPath?: string;
 }
 
 export interface ClientStatus {
@@ -79,11 +90,33 @@ export class AgentExpoClient {
 
   /**
    * Connect to daemon
+   *
+   * @param options Connection options including autoStart
    */
-  async connect(): Promise<void> {
+  async connect(options: ConnectOptions = {}): Promise<void> {
     if (this.socket) return;
 
-    return this.attemptConnect();
+    // Try normal connection first
+    try {
+      await this.attemptConnect();
+      return;
+    } catch (error) {
+      if (!options.autoStart) {
+        throw error;
+      }
+    }
+
+    // Auto-start daemon
+    log.info('Daemon not running, starting...');
+    await startDaemon({
+      timeout: options.startTimeout ?? 10000,
+      daemonPath: options.daemonPath,
+      session: this.session,
+      port: this.port,
+    });
+
+    // Try connecting again
+    await this.attemptConnect();
   }
 
   /**
@@ -797,5 +830,30 @@ export class AgentExpoClient {
     } catch {
       return false;
     }
+  }
+
+  // ============================================
+  // Static Methods
+  // ============================================
+
+  /**
+   * Check if daemon is running without connecting
+   */
+  static async isDaemonRunning(session: string = 'default', port?: number): Promise<boolean> {
+    return isDaemonRunning(session, port);
+  }
+
+  /**
+   * Start daemon manually
+   */
+  static async startDaemon(options?: DaemonStartOptions): Promise<void> {
+    return startDaemon(options);
+  }
+
+  /**
+   * Stop daemon
+   */
+  static async stopDaemon(session: string = 'default', port?: number): Promise<void> {
+    return stopDaemon(session, port);
   }
 }

@@ -332,6 +332,30 @@ Or install the CLI globally:
   npm install -g agent-expo`,
     }),
 
+  DAEMON_NOT_FOUND: () =>
+    new AgentExpoError({
+      code: 'DAEMON_NOT_FOUND',
+      message: 'Could not find agent-expo daemon executable',
+      hint: `Make sure @agent-expo/daemon is installed:
+  npm install @agent-expo/daemon
+
+Or install the CLI globally:
+  npm install -g agent-expo
+
+You can also specify the daemon path manually:
+  client.connect({ autoStart: true, daemonPath: '/path/to/daemon' })`,
+    }),
+
+  DAEMON_START_TIMEOUT: (timeoutMs: number) =>
+    new AgentExpoError({
+      code: 'DAEMON_START_TIMEOUT',
+      message: `Daemon did not start within ${timeoutMs}ms`,
+      hint: `The daemon process was spawned but didn't become ready. Try:
+  1. Check daemon logs: ~/.agent-expo/daemon.log
+  2. Increase the startTimeout option
+  3. Start the daemon manually: agent-expo daemon start`,
+    }),
+
   // ============================================
   // Provider Errors (Bridge)
   // ============================================
