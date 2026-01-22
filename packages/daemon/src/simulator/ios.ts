@@ -25,9 +25,15 @@ interface SimctlRuntime {
   isAvailable: boolean;
 }
 
+export interface IOSBootOptions {
+  /** Run simulator without visible Simulator.app window */
+  headless?: boolean;
+}
+
 export class IOSSimulatorManager {
   private activeDeviceId: string | null = null;
   private idbAvailable: boolean | null = null;
+  private headlessMode: boolean = false;
 
   /**
    * Check if idb (iOS Development Bridge) is available
@@ -106,8 +112,12 @@ export class IOSSimulatorManager {
 
   /**
    * Boot a simulator
+   * @param deviceId Optional device ID. If not specified, will use first available device.
+   * @param options Boot options including headless mode.
    */
-  async boot(deviceId?: string): Promise<string> {
+  async boot(deviceId?: string, options?: IOSBootOptions): Promise<string> {
+    const headless = options?.headless || process.env.AGENT_EXPO_HEADLESS === '1';
+
     // If no device specified, find a suitable one
     if (!deviceId) {
       const devices = await this.listDevices();
@@ -116,6 +126,7 @@ export class IOSSimulatorManager {
       const booted = devices.find((d) => d.state === 'booted' && d.isAvailable);
       if (booted) {
         this.activeDeviceId = booted.id;
+        this.headlessMode = headless;
         return booted.id;
       }
 
@@ -141,11 +152,21 @@ export class IOSSimulatorManager {
     // Wait for boot to complete
     await this.waitForState(deviceId, 'booted');
 
-    // Open Simulator.app
-    await execAsync('open -a Simulator');
+    // Only open Simulator.app if not in headless mode
+    if (!headless) {
+      await execAsync('open -a Simulator');
+    }
 
     this.activeDeviceId = deviceId;
+    this.headlessMode = headless;
     return deviceId;
+  }
+
+  /**
+   * Check if running in headless mode
+   */
+  isHeadless(): boolean {
+    return this.headlessMode;
   }
 
   /**

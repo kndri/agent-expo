@@ -17,7 +17,11 @@ export function registerLaunchCommand(program: Commander, client: DaemonClient, 
     .option('-a, --app <path>', 'Path to .app or .apk file')
     .option('-b, --bundle-id <bundleId>', 'App bundle ID / package name')
     .option('--clear', 'Clear app state before launching')
+    .option('--headless', 'Run simulator/emulator without visible window (for CI/CD)')
     .action(async (opts) => {
+      // Support AGENT_EXPO_HEADLESS env var
+      const headless = opts.headless || process.env.AGENT_EXPO_HEADLESS === '1';
+
       const command: LaunchCommandType = {
         id: uuid(),
         action: 'launch',
@@ -26,6 +30,7 @@ export function registerLaunchCommand(program: Commander, client: DaemonClient, 
         app: opts.app,
         bundleId: opts.bundleId,
         clearState: opts.clear,
+        headless,
       };
 
       const response = await client.send(command);

@@ -35,6 +35,7 @@ export interface LaunchConfig {
   appPath?: string;
   bundleId?: string;
   clearState?: boolean;
+  /** Run simulator/emulator without visible window (for CI/CD) */
   headless?: boolean;
 }
 
@@ -104,8 +105,10 @@ export class AppController {
    * Launch a device and app
    */
   async launch(config: LaunchConfig): Promise<Device> {
-    // Boot the device
-    const device = await this.deviceManager.boot(config.platform, config.device);
+    // Boot the device (pass headless option for CI/CD use cases)
+    const device = await this.deviceManager.boot(config.platform, config.device, {
+      headless: config.headless,
+    });
 
     // Install app if path provided
     if (config.appPath) {

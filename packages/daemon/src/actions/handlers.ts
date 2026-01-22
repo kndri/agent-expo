@@ -173,6 +173,7 @@ const handlers: HandlerMap = {
       appPath: command.app,
       bundleId: command.bundleId,
       clearState: command.clearState,
+      headless: command.headless,
     });
 
     return success(command.id, {

@@ -5,12 +5,17 @@
  */
 
 import { Errors, type Device, type Platform, type Point, type Bounds } from '@agent-expo/protocol';
-import { IOSSimulatorManager } from './ios.js';
-import { AndroidEmulatorManager, KeyCode } from './android.js';
+import { IOSSimulatorManager, type IOSBootOptions } from './ios.js';
+import { AndroidEmulatorManager, KeyCode, type AndroidBootOptions } from './android.js';
 
 export interface DeviceManagerConfig {
   platform?: Platform;
   deviceId?: string;
+}
+
+export interface BootOptions {
+  /** Run simulator/emulator without visible window */
+  headless?: boolean;
 }
 
 export class DeviceManager {
@@ -73,14 +78,17 @@ export class DeviceManager {
 
   /**
    * Boot a device
+   * @param platform Platform to boot (ios or android)
+   * @param deviceId Optional device ID. If not specified, will use first available device.
+   * @param options Boot options including headless mode.
    */
-  async boot(platform: Platform, deviceId?: string): Promise<Device> {
+  async boot(platform: Platform, deviceId?: string, options?: BootOptions): Promise<Device> {
     let id: string;
 
     if (platform === 'ios') {
-      id = await this.iosManager.boot(deviceId);
+      id = await this.iosManager.boot(deviceId, options);
     } else {
-      id = await this.androidManager.boot(deviceId);
+      id = await this.androidManager.boot(deviceId, options);
     }
 
     // Get the full device info
@@ -95,6 +103,18 @@ export class DeviceManager {
     this.activePlatform = platform;
 
     return device;
+  }
+
+  /**
+   * Check if running in headless mode
+   */
+  isHeadless(): boolean {
+    if (this.activePlatform === 'ios') {
+      return this.iosManager.isHeadless();
+    } else if (this.activePlatform === 'android') {
+      return this.androidManager.isHeadless();
+    }
+    return false;
   }
 
   /**

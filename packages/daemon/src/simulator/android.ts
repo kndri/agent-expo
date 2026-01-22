@@ -38,9 +38,15 @@ export const KeyCode = {
   ESCAPE: 111,
 } as const;
 
+export interface AndroidBootOptions {
+  /** Run emulator without visible window */
+  headless?: boolean;
+}
+
 export class AndroidEmulatorManager {
   private activeDeviceId: string | null = null;
   private emulatorProcess: ChildProcess | null = null;
+  private headlessMode: boolean = false;
 
   /**
    * Execute an adb command
@@ -128,13 +134,18 @@ export class AndroidEmulatorManager {
 
   /**
    * Start an Android emulator
+   * @param avdName Optional AVD name. If not specified, will use first available AVD.
+   * @param options Boot options including headless mode.
    */
-  async boot(avdName?: string): Promise<string> {
+  async boot(avdName?: string, options?: AndroidBootOptions): Promise<string> {
+    const headless = options?.headless || process.env.AGENT_EXPO_HEADLESS === '1';
+
     // Check if there's already a booted device
     const devices = await this.listDevices();
     const booted = devices.find((d) => d.state === 'booted');
     if (booted) {
       this.activeDeviceId = booted.id;
+      this.headlessMode = headless;
       return booted.id;
     }
 
@@ -147,8 +158,21 @@ export class AndroidEmulatorManager {
       avdName = avds[0];
     }
 
+    // Build emulator arguments
+    const emulatorArgs = ['-avd', avdName, '-no-snapshot-load'];
+
+    if (headless) {
+      // Headless mode flags
+      emulatorArgs.push(
+        '-no-window',           // No GUI window
+        '-no-audio',            // No audio
+        '-no-boot-anim',        // Skip boot animation
+        '-gpu', 'swiftshader_indirect', // Software rendering (works without GPU)
+      );
+    }
+
     // Start emulator in background
-    this.emulatorProcess = spawn('emulator', ['-avd', avdName, '-no-snapshot-load'], {
+    this.emulatorProcess = spawn('emulator', emulatorArgs, {
       detached: true,
       stdio: 'ignore',
     });
@@ -158,11 +182,19 @@ export class AndroidEmulatorManager {
     // Wait for device to appear
     const deviceId = await this.waitForDevice();
     this.activeDeviceId = deviceId;
+    this.headlessMode = headless;
 
     // Wait for boot to complete
     await this.waitForBootComplete(deviceId);
 
     return deviceId;
+  }
+
+  /**
+   * Check if running in headless mode
+   */
+  isHeadless(): boolean {
+    return this.headlessMode;
   }
 
   /**

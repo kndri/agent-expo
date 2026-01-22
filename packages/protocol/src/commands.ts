@@ -20,7 +20,7 @@ export const LaunchCommand = BaseCommand.extend({
   app: z.string().optional(), // Path to .app or .apk
   bundleId: z.string().optional(),
   clearState: z.boolean().optional(),
-  headless: z.boolean().optional(),
+  headless: z.boolean().optional(), // Run simulator/emulator without visible window
   locale: z.string().optional(),
 });
 

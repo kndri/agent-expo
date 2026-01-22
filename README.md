@@ -673,6 +673,80 @@ The daemon stores logs and baselines in `~/.agent-expo/`:
 └── diffs/              # Visual diff images
 ```
 
+## CI/CD Integration
+
+Run agent-expo in headless mode for automated testing in CI/CD pipelines.
+
+### Headless Mode
+
+Launch simulators/emulators without visible windows:
+
+```bash
+# Via CLI flag
+agent-expo launch --platform android --headless
+
+# Via environment variable
+AGENT_EXPO_HEADLESS=1 agent-expo launch --platform ios
+```
+
+### GitHub Actions (Android)
+
+```yaml
+name: Mobile Tests
+
+on: [push, pull_request]
+
+jobs:
+  android-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
+          script: |
+            npm install -g @agent-expo/cli
+            agent-expo daemon start &
+            sleep 5
+            npm test
+```
+
+### GitHub Actions (iOS - macOS only)
+
+```yaml
+jobs:
+  ios-test:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot iOS Simulator (headless)
+        run: |
+          xcrun simctl boot "iPhone 15"
+          npm install -g @agent-expo/cli
+          agent-expo daemon start &
+          sleep 5
+          npm test
+```
+
+### Headless Mode Notes
+
+- **iOS**: Simulator boots via `simctl` without opening Simulator.app. Screenshots still work via `simctl io screenshot`.
+- **Android**: Emulator runs with `-no-window -no-audio -no-boot-anim -gpu swiftshader_indirect`. Screenshots work via `adb screencap`.
+- **Interactions**: Native interactions (tap, type) work in headless mode. AppleScript-based fallbacks on iOS will not work without Simulator.app.
+
 ## Troubleshooting
 
 ### Bridge not connecting
