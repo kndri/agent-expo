@@ -4,7 +4,7 @@
 
 import type { Command as Commander } from 'commander';
 import { v4 as uuid } from 'uuid';
-import type { LaunchCommand } from '@agent-expo/protocol';
+import type { LaunchCommandType } from '@agent-expo/protocol';
 import { DaemonClient } from '../daemon-client.js';
 import { printResponse, type OutputOptions } from '../output.js';
 
@@ -18,7 +18,7 @@ export function registerLaunchCommand(program: Commander, client: DaemonClient, 
     .option('-b, --bundle-id <bundleId>', 'App bundle ID / package name')
     .option('--clear', 'Clear app state before launching')
     .action(async (opts) => {
-      const command: LaunchCommand = {
+      const command: LaunchCommandType = {
         id: uuid(),
         action: 'launch',
         platform: opts.platform,

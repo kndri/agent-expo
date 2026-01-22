@@ -35,14 +35,57 @@ import type {
   ScreenshotDiffResponseData,
   ScreenshotListResponseData,
   ScreenshotDeleteResponseData,
+  // Command types
+  LaunchCommandType,
+  TerminateCommandType,
+  ReinstallCommandType,
+  SnapshotCommandType,
+  TapCommandType,
+  DoubleTapCommandType,
+  LongPressCommandType,
+  FillCommandType,
+  ClearCommandType,
+  TypeCommandType,
+  ScrollCommandType,
+  SwipeCommandType,
+  PinchCommandType,
+  NavigateCommandType,
+  BackCommandType,
+  HomeCommandType,
+  ReloadCommandType,
+  ShakeCommandType,
+  ScreenshotCommandType,
+  VisualCompareCommandType,
+  ScreenshotSaveCommandType,
+  ScreenshotCompareCommandType,
+  ScreenshotDiffCommandType,
+  ScreenshotListCommandType,
+  ScreenshotDeleteCommandType,
+  AssertCommandType,
+  WaitForCommandType,
+  NetworkRequestsCommandType,
+  NetworkMockCommandType,
+  NetworkClearMocksCommandType,
+  SupabaseCallsCommandType,
+  SupabaseClearCommandType,
+  ConvexCallsCommandType,
+  ConvexClearCommandType,
+  DeviceListCommandType,
+  DeviceInfoCommandType,
+  SetLocationCommandType,
+  SetPermissionCommandType,
+  KeyboardCommandType,
+  PressKeyCommandType,
+  StatusCommandType,
+  PingCommandType,
 } from '@agent-expo/protocol';
 import { success, error, ErrorCode } from '@agent-expo/protocol';
 import type { AppController } from '../app-controller.js';
 
-type ActionHandler<C extends Command, D> = (
-  command: C,
-  controller: AppController
-) => Promise<Response<D>>;
+/**
+ * Handler function type for a specific command
+ */
+type Handler<C, D> = (command: C, controller: AppController) => Promise<Response<D>>;
 
 /**
  * Execute a command and return a response
@@ -58,19 +101,68 @@ export async function executeCommand(
   }
 
   try {
-    return await handler(command as any, controller);
+    // Type assertion needed here since handlers map is keyed by string
+    return await (handler as Handler<Command, unknown>)(command, controller);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return error(command.id, message, ErrorCode.UNKNOWN);
   }
 }
 
-const handlers: Record<string, ActionHandler<any, any>> = {
+/**
+ * Handler map type - each action maps to its specific handler
+ */
+type HandlerMap = {
+  launch: Handler<LaunchCommandType, LaunchResponseData>;
+  terminate: Handler<TerminateCommandType, TerminateResponseData>;
+  reinstall: Handler<ReinstallCommandType, { reinstalled: true }>;
+  snapshot: Handler<SnapshotCommandType, SnapshotResponseData>;
+  tap: Handler<TapCommandType, TapResponseData>;
+  doubleTap: Handler<DoubleTapCommandType, TapResponseData>;
+  longPress: Handler<LongPressCommandType, TapResponseData>;
+  fill: Handler<FillCommandType, FillResponseData>;
+  clear: Handler<ClearCommandType, ClearResponseData>;
+  type: Handler<TypeCommandType, { typed: true }>;
+  scroll: Handler<ScrollCommandType, ScrollResponseData>;
+  swipe: Handler<SwipeCommandType, SwipeResponseData>;
+  pinch: Handler<PinchCommandType, { pinched: true }>;
+  navigate: Handler<NavigateCommandType, NavigateResponseData>;
+  back: Handler<BackCommandType, BackResponseData>;
+  home: Handler<HomeCommandType, HomeResponseData>;
+  reload: Handler<ReloadCommandType, { reloaded: true }>;
+  shake: Handler<ShakeCommandType, { shook: true }>;
+  screenshot: Handler<ScreenshotCommandType, ScreenshotResponseData>;
+  visualCompare: Handler<VisualCompareCommandType, unknown>;
+  screenshotSave: Handler<ScreenshotSaveCommandType, ScreenshotSaveResponseData>;
+  screenshotCompare: Handler<ScreenshotCompareCommandType, ScreenshotCompareResponseData>;
+  screenshotDiff: Handler<ScreenshotDiffCommandType, ScreenshotDiffResponseData>;
+  screenshotList: Handler<ScreenshotListCommandType, ScreenshotListResponseData>;
+  screenshotDelete: Handler<ScreenshotDeleteCommandType, ScreenshotDeleteResponseData>;
+  assert: Handler<AssertCommandType, AssertResponseData>;
+  waitFor: Handler<WaitForCommandType, { found: boolean; elapsed: number }>;
+  networkRequests: Handler<NetworkRequestsCommandType, NetworkRequestsResponseData>;
+  networkMock: Handler<NetworkMockCommandType, NetworkMockResponseData>;
+  networkClearMocks: Handler<NetworkClearMocksCommandType, NetworkClearMocksResponseData>;
+  supabaseCalls: Handler<SupabaseCallsCommandType, SupabaseCallsResponseData>;
+  supabaseClear: Handler<SupabaseClearCommandType, { cleared: true }>;
+  convexCalls: Handler<ConvexCallsCommandType, ConvexCallsResponseData>;
+  convexClear: Handler<ConvexClearCommandType, { cleared: true }>;
+  deviceList: Handler<DeviceListCommandType, DeviceListResponseData>;
+  deviceInfo: Handler<DeviceInfoCommandType, DeviceInfoResponseData>;
+  setLocation: Handler<SetLocationCommandType, SetLocationResponseData>;
+  setPermission: Handler<SetPermissionCommandType, unknown>;
+  keyboard: Handler<KeyboardCommandType, unknown>;
+  pressKey: Handler<PressKeyCommandType, { pressed: true }>;
+  status: Handler<StatusCommandType, StatusResponseData>;
+  ping: Handler<PingCommandType, PingResponseData>;
+};
+
+const handlers: HandlerMap = {
   // ============================================
   // Lifecycle
   // ============================================
 
-  async launch(command: any, controller: AppController): Promise<Response<LaunchResponseData>> {
+  async launch(command, controller) {
     const device = await controller.launch({
       platform: command.platform,
       device: command.device,
@@ -86,12 +178,15 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async terminate(command: any, controller: AppController): Promise<Response<TerminateResponseData>> {
+  async terminate(command, controller) {
     await controller.terminate();
     return success(command.id, { terminated: true });
   },
 
-  async reinstall(command: any, controller: AppController): Promise<Response<{ reinstalled: true }>> {
+  async reinstall(command, controller) {
+    if (!command.app) {
+      return error(command.id, ErrorCode.INVALID_COMMAND, 'App path is required for reinstall');
+    }
     await controller.reinstall(command.app);
     return success(command.id, { reinstalled: true });
   },
@@ -100,7 +195,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Snapshot
   // ============================================
 
-  async snapshot(command: any, controller: AppController): Promise<Response<SnapshotResponseData>> {
+  async snapshot(command, controller) {
     const snapshot = await controller.getSnapshot({
       interactive: command.interactive,
       compact: command.compact,
@@ -125,7 +220,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Interaction
   // ============================================
 
-  async tap(command: any, controller: AppController): Promise<Response<TapResponseData>> {
+  async tap(command, controller) {
     if (command.ref) {
       await controller.tap(command.ref, {
         count: command.count,
@@ -146,7 +241,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async doubleTap(command: any, controller: AppController): Promise<Response<TapResponseData>> {
+  async doubleTap(command, controller) {
     if (command.ref) {
       await controller.tap(command.ref, { count: 2 });
     } else if (command.testID) {
@@ -162,7 +257,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     return success(command.id, { tapped: true, ref: command.ref });
   },
 
-  async longPress(command: any, controller: AppController): Promise<Response<TapResponseData>> {
+  async longPress(command, controller) {
     const duration = command.duration || 500;
 
     if (command.ref) {
@@ -175,8 +270,8 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     return success(command.id, { tapped: true, ref: command.ref });
   },
 
-  async fill(command: any, controller: AppController): Promise<Response<FillResponseData>> {
-    await controller.fill(command.ref || command.testID, command.text, command.clear);
+  async fill(command, controller) {
+    await controller.fill(command.ref || command.testID || '', command.text, command.clear);
     return success(command.id, {
       filled: true,
       ref: command.ref,
@@ -184,12 +279,12 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async clear(command: any, controller: AppController): Promise<Response<ClearResponseData>> {
-    await controller.clear(command.ref || command.testID);
+  async clear(command, controller) {
+    await controller.clear(command.ref || command.testID || '');
     return success(command.id, { cleared: true, ref: command.ref });
   },
 
-  async type(command: any, controller: AppController): Promise<Response<{ typed: true }>> {
+  async type(command, controller) {
     await controller.type(command.text);
     return success(command.id, { typed: true });
   },
@@ -198,9 +293,9 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Scroll & Swipe
   // ============================================
 
-  async scroll(command: any, controller: AppController): Promise<Response<ScrollResponseData>> {
+  async scroll(command, controller) {
     if (command.toRef || command.toTestID) {
-      const found = await controller.scrollToRef(command.toRef || command.toTestID, command.direction);
+      const found = await controller.scrollToRef(command.toRef || command.toTestID || '', command.direction);
       return success(command.id, {
         scrolled: true,
         direction: command.direction,
@@ -216,12 +311,12 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async swipe(command: any, controller: AppController): Promise<Response<SwipeResponseData>> {
+  async swipe(command, controller) {
     await controller.swipe(command.from, command.to, command.duration);
     return success(command.id, { swiped: true });
   },
 
-  async pinch(command: any, controller: AppController): Promise<Response<{ pinched: true }>> {
+  async pinch(command, controller) {
     // Pinch is complex to implement - would require multi-touch
     return error(command.id, 'Pinch not yet implemented', ErrorCode.UNKNOWN);
   },
@@ -230,27 +325,27 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Navigation
   // ============================================
 
-  async navigate(command: any, controller: AppController): Promise<Response<NavigateResponseData>> {
+  async navigate(command, controller) {
     await controller.navigate(command.url);
     return success(command.id, { navigated: true, url: command.url });
   },
 
-  async back(command: any, controller: AppController): Promise<Response<BackResponseData>> {
+  async back(command, controller) {
     await controller.pressBack();
     return success(command.id, { pressed: 'back' });
   },
 
-  async home(command: any, controller: AppController): Promise<Response<HomeResponseData>> {
+  async home(command, controller) {
     await controller.pressHome();
     return success(command.id, { pressed: 'home' });
   },
 
-  async reload(command: any, controller: AppController): Promise<Response<{ reloaded: true }>> {
+  async reload(command, controller) {
     await controller.reload();
     return success(command.id, { reloaded: true });
   },
 
-  async shake(command: any, controller: AppController): Promise<Response<{ shook: true }>> {
+  async shake(command, controller) {
     // Shake would need platform-specific implementation
     return error(command.id, 'Shake not yet implemented', ErrorCode.UNKNOWN);
   },
@@ -259,7 +354,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Screenshot
   // ============================================
 
-  async screenshot(command: any, controller: AppController): Promise<Response<ScreenshotResponseData>> {
+  async screenshot(command, controller) {
     const buffer = await controller.screenshot(command.path);
 
     if (command.path) {
@@ -277,7 +372,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async visualCompare(command: any, controller: AppController): Promise<Response<any>> {
+  async visualCompare(command, controller) {
     // Use the new visual testing commands instead
     return error(command.id, 'Use screenshotCompare command instead', ErrorCode.UNKNOWN);
   },
@@ -286,7 +381,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Visual Testing
   // ============================================
 
-  async screenshotSave(command: any, controller: AppController): Promise<Response<ScreenshotSaveResponseData>> {
+  async screenshotSave(command, controller) {
     const buffer = await controller.screenshot();
     const path = await controller.saveBaseline(command.name, buffer);
 
@@ -297,7 +392,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async screenshotCompare(command: any, controller: AppController): Promise<Response<ScreenshotCompareResponseData>> {
+  async screenshotCompare(command, controller) {
     const buffer = await controller.screenshot();
     const result = await controller.compareWithBaseline(command.name, buffer, {
       threshold: command.threshold,
@@ -307,14 +402,14 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     return success(command.id, result);
   },
 
-  async screenshotDiff(command: any, controller: AppController): Promise<Response<ScreenshotDiffResponseData>> {
+  async screenshotDiff(command, controller) {
     const buffer = await controller.screenshot();
     const diffPath = await controller.generateDiff(command.name, buffer, command.outputPath);
 
     return success(command.id, { diffPath });
   },
 
-  async screenshotList(command: any, controller: AppController): Promise<Response<ScreenshotListResponseData>> {
+  async screenshotList(command, controller) {
     const baselines = controller.listBaselines();
 
     return success(command.id, {
@@ -323,7 +418,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async screenshotDelete(command: any, controller: AppController): Promise<Response<ScreenshotDeleteResponseData>> {
+  async screenshotDelete(command, controller) {
     const deleted = controller.deleteBaseline(command.name);
 
     return success(command.id, {
@@ -336,18 +431,19 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Assertions
   // ============================================
 
-  async assert(command: any, controller: AppController): Promise<Response<AssertResponseData>> {
-    const result = await controller.assert(command.ref || command.testID, command.assertion, command.value);
+  async assert(command, controller) {
+    const result = await controller.assert(command.ref || command.testID || '', command.assertion, command.value);
     return success(command.id, result);
   },
 
-  async waitFor(command: any, controller: AppController): Promise<Response<{ found: boolean; elapsed: number }>> {
+  async waitFor(command, controller) {
     const timeout = command.timeout || 5000;
     const start = Date.now();
 
     while (Date.now() - start < timeout) {
       const snapshot = await controller.getSnapshot({ interactive: true });
-      const entry = snapshot.refs[command.ref];
+      const ref = command.ref || command.testID || '';
+      const entry = snapshot.refs[ref];
 
       let conditionMet = false;
       switch (command.condition) {
@@ -375,7 +471,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Network
   // ============================================
 
-  async networkRequests(command: any, controller: AppController): Promise<Response<NetworkRequestsResponseData>> {
+  async networkRequests(command, controller) {
     const requests = await controller.getRequests({
       url: command.filter,
       method: command.method,
@@ -390,12 +486,12 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async networkMock(command: any, controller: AppController): Promise<Response<NetworkMockResponseData>> {
+  async networkMock(command, controller) {
     await controller.mockResponse(command.pattern, command.response);
     return success(command.id, { mocked: true, pattern: command.pattern });
   },
 
-  async networkClearMocks(command: any, controller: AppController): Promise<Response<NetworkClearMocksResponseData>> {
+  async networkClearMocks(command, controller) {
     await controller.clearMocks();
     return success(command.id, { cleared: true, count: 0 });
   },
@@ -404,7 +500,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Supabase
   // ============================================
 
-  async supabaseCalls(command: any, controller: AppController): Promise<Response<SupabaseCallsResponseData>> {
+  async supabaseCalls(command, controller) {
     const calls = await controller.getSupabaseCalls({
       table: command.table,
       operation: command.operation,
@@ -418,7 +514,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async supabaseClear(command: any, controller: AppController): Promise<Response<{ cleared: true }>> {
+  async supabaseClear(command, controller) {
     // Clear would need bridge support
     return success(command.id, { cleared: true });
   },
@@ -427,7 +523,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Convex
   // ============================================
 
-  async convexCalls(command: any, controller: AppController): Promise<Response<ConvexCallsResponseData>> {
+  async convexCalls(command, controller) {
     const calls = await controller.getConvexCalls({
       functionName: command.functionName,
       type: command.type,
@@ -441,7 +537,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async convexClear(command: any, controller: AppController): Promise<Response<{ cleared: true }>> {
+  async convexClear(command, controller) {
     return success(command.id, { cleared: true });
   },
 
@@ -449,12 +545,12 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Device
   // ============================================
 
-  async deviceList(command: any, controller: AppController): Promise<Response<DeviceListResponseData>> {
+  async deviceList(command, controller) {
     const devices = await controller.listDevices(command.platform);
     return success(command.id, { devices, count: devices.length });
   },
 
-  async deviceInfo(command: any, controller: AppController): Promise<Response<DeviceInfoResponseData>> {
+  async deviceInfo(command, controller) {
     const device = controller.getDevice();
     if (!device) {
       return error(command.id, 'No active device', ErrorCode.DEVICE_NOT_BOOTED);
@@ -463,7 +559,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     return success(command.id, { device });
   },
 
-  async setLocation(command: any, controller: AppController): Promise<Response<SetLocationResponseData>> {
+  async setLocation(command, controller) {
     await controller.setLocation(command.latitude, command.longitude);
     return success(command.id, {
       set: true,
@@ -472,7 +568,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async setPermission(command: any, controller: AppController): Promise<Response<any>> {
+  async setPermission(command, controller) {
     // Would need platform-specific implementation
     return error(command.id, 'setPermission not yet implemented', ErrorCode.UNKNOWN);
   },
@@ -481,12 +577,12 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Keyboard
   // ============================================
 
-  async keyboard(command: any, controller: AppController): Promise<Response<any>> {
+  async keyboard(command, controller) {
     // Would need bridge support
     return error(command.id, 'keyboard not yet implemented', ErrorCode.UNKNOWN);
   },
 
-  async pressKey(command: any, controller: AppController): Promise<Response<{ pressed: true }>> {
+  async pressKey(command, controller) {
     await controller.pressKey(command.key);
     return success(command.id, { pressed: true });
   },
@@ -495,7 +591,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // Status
   // ============================================
 
-  async status(command: any, controller: AppController): Promise<Response<StatusResponseData>> {
+  async status(command, controller) {
     const device = controller.getDevice();
 
     return success(command.id, {
@@ -510,7 +606,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
     });
   },
 
-  async ping(command: any, controller: AppController): Promise<Response<PingResponseData>> {
+  async ping(command, controller) {
     return success(command.id, {
       pong: true,
       timestamp: new Date().toISOString(),

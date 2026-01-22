@@ -4,7 +4,7 @@
 
 import type { Command as Commander } from 'commander';
 import { v4 as uuid } from 'uuid';
-import type { SnapshotCommand } from '@agent-expo/protocol';
+import type { SnapshotCommandType } from '@agent-expo/protocol';
 import { DaemonClient } from '../daemon-client.js';
 import { printResponse, type OutputOptions } from '../output.js';
 
@@ -18,7 +18,7 @@ export function registerSnapshotCommand(program: Commander, client: DaemonClient
     .option('--with-screenshot', 'Include base64 screenshot')
     .option('-n, --native', 'Use native accessibility APIs (idb/adb) instead of bridge')
     .action(async (opts) => {
-      const command: SnapshotCommand = {
+      const command: SnapshotCommandType = {
         id: uuid(),
         action: 'snapshot',
         interactive: opts.interactive,
