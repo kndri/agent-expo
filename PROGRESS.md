@@ -5,7 +5,7 @@ This file tracks progress using the Ralph Loop pattern.
 ## Current Status
 
 **Phase:** Building
-**Current Task:** #16 - Windows Support
+**Current Task:** #17 - Headless Mode for CI/CD
 **Blocker:** None
 
 ## Task Queue (Prioritized)
@@ -79,10 +79,12 @@ This file tracks progress using the Ralph Loop pattern.
 
 ### Phase 5: Platform & Features (Future)
 
-- [ ] **#16** - Windows Support
-  - TCP socket support
-  - Windows path handling
-  - Android device management on Windows
+- [x] **#16** - Windows Support ✅
+  - Fixed daemon-starter TCP detection for Windows
+  - Added shell and windowsHide flags for process spawning
+  - Added Windows to CI test matrix
+  - Added .gitattributes for line endings
+  - Added Windows installation docs to README
   - [Issue](https://github.com/kndri/agent-expo/issues/16)
 
 - [ ] **#17** - Headless Mode for CI/CD
@@ -175,6 +177,12 @@ This file tracks progress using the Ralph Loop pattern.
   - Added cache-stats and cache-invalidate CLI commands
   - Added --fresh and --max-cache-age flags to snapshot CLI
   - Full integration across bridge, protocol, daemon, and CLI
+- **Completed #16** - Windows support:
+  - Fixed daemon-starter to use TCP by default on Windows (no explicit port required)
+  - Added shell: true and windowsHide: true for Windows process spawning
+  - Added Windows to CI test matrix (ubuntu, macos, windows)
+  - Added .gitattributes for consistent LF line endings
+  - Added Windows installation documentation to README
 
 ---
 
