@@ -5,7 +5,7 @@ This file tracks progress using the Ralph Loop pattern.
 ## Current Status
 
 **Phase:** Building
-**Current Task:** #9 - Enhance Error Messages
+**Current Task:** #15 - SDK Auto-Start Daemon Option
 **Blocker:** None
 
 ## Task Queue (Prioritized)
@@ -34,22 +34,23 @@ This file tracks progress using the Ralph Loop pattern.
 
 ### Phase 2: Reliability Improvements
 
-- [ ] **#9** - Enhance Error Messages with Troubleshooting Hints
-  - Create AgentExpoError class
-  - Define common error types with hints
-  - Update error throw sites
+- [x] **#9** - Enhance Error Messages with Troubleshooting Hints ✅
+  - Created AgentExpoError class with code, message, hint, docs
+  - Defined 20+ common error types with actionable hints
+  - Updated error throw sites across daemon, CLI, SDK
+  - Added chalk for colored CLI error output
   - [Issue](https://github.com/kndri/agent-expo/issues/9)
 
-- [ ] **#10** - Implement Exponential Backoff for Bridge Reconnection
-  - Create backoff utility
-  - Update AgentBridgeProvider
-  - Update SDK client
+- [x] **#10** - Implement Exponential Backoff for Bridge Reconnection ✅
+  - Created ExponentialBackoff utility with jitter
+  - Updated AgentBridgeProvider with backoff-based reconnection
+  - Added connectWithRetry method to SDK client
   - [Issue](https://github.com/kndri/agent-expo/issues/10)
 
-- [ ] **#14** - Add Configurable Log Levels
-  - Create Logger utility
-  - Replace console.log calls
-  - Add CLI flag and env var support
+- [x] **#14** - Add Configurable Log Levels ✅
+  - Created Logger utility with all log levels
+  - Replaced console.log calls with logger
+  - Added --log-level CLI flag and env var support
   - [Issue](https://github.com/kndri/agent-expo/issues/14)
 
 ### Phase 3: Developer Experience
@@ -133,6 +134,24 @@ This file tracks progress using the Ralph Loop pattern.
   - Handlers for all standard commands
   - 4 pre-built scenarios (login, home, settings, empty)
   - Event system for test assertions
+- **Completed #9** - Enhanced error messages:
+  - Created AgentExpoError class with code, message, hint, docs
+  - Added 20+ error types (BRIDGE_NOT_CONNECTED, DEVICE_NOT_FOUND, etc.)
+  - Updated throw sites in daemon, CLI, SDK packages
+  - Added chalk for colored CLI output
+  - Updated Jest config for ESM module resolution
+- **Completed #10** - Exponential backoff for reconnection:
+  - Created ExponentialBackoff class in protocol/utils
+  - Added ReconnectConfig interface to bridge types
+  - Updated AgentBridgeProvider with backoff-based reconnection
+  - Added connectWithRetry method to SDK client
+  - Supports configurable delay, max attempts, jitter
+- **Completed #14** - Configurable log levels:
+  - Created Logger utility with SILENT, ERROR, WARN, INFO, DEBUG, TRACE levels
+  - Added --log-level CLI flag
+  - Added AGENT_EXPO_LOG_LEVEL env var support
+  - Created child loggers with module prefixes (daemon, bridge, cli, sdk)
+  - Replaced console.log calls throughout codebase
 
 ---
 
