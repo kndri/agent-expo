@@ -373,6 +373,46 @@ export const CacheInvalidateCommand = BaseCommand.extend({
 });
 
 // ============================================
+// Recording Commands
+// ============================================
+
+export const RecordStartCommand = BaseCommand.extend({
+  action: z.literal('recordStart'),
+  name: z.string(), // Recording name
+  output: z.string().optional(), // Output file path
+});
+
+export const RecordStopCommand = BaseCommand.extend({
+  action: z.literal('recordStop'),
+});
+
+export const RecordListCommand = BaseCommand.extend({
+  action: z.literal('recordList'),
+});
+
+export const RecordPlayCommand = BaseCommand.extend({
+  action: z.literal('recordPlay'),
+  name: z.string(), // Recording name or file path
+  speed: z.number().optional(), // Playback speed multiplier (default 1.0)
+});
+
+export const RecordDeleteCommand = BaseCommand.extend({
+  action: z.literal('recordDelete'),
+  name: z.string(),
+});
+
+export const RecordExportCommand = BaseCommand.extend({
+  action: z.literal('recordExport'),
+  name: z.string(), // Recording name
+  format: z.enum(['typescript', 'jest', 'json']), // Export format
+  output: z.string().optional(), // Output file path
+});
+
+export const RecordStatusCommand = BaseCommand.extend({
+  action: z.literal('recordStatus'),
+});
+
+// ============================================
 // Union of all commands
 // ============================================
 
@@ -435,6 +475,14 @@ export const Command = z.discriminatedUnion('action', [
   // Cache
   CacheStatsCommand,
   CacheInvalidateCommand,
+  // Recording
+  RecordStartCommand,
+  RecordStopCommand,
+  RecordListCommand,
+  RecordPlayCommand,
+  RecordDeleteCommand,
+  RecordExportCommand,
+  RecordStatusCommand,
 ]);
 
 export type Command = z.infer<typeof Command>;
@@ -484,6 +532,13 @@ export type StatusCommandType = z.infer<typeof StatusCommand>;
 export type PingCommandType = z.infer<typeof PingCommand>;
 export type CacheStatsCommandType = z.infer<typeof CacheStatsCommand>;
 export type CacheInvalidateCommandType = z.infer<typeof CacheInvalidateCommand>;
+export type RecordStartCommandType = z.infer<typeof RecordStartCommand>;
+export type RecordStopCommandType = z.infer<typeof RecordStopCommand>;
+export type RecordListCommandType = z.infer<typeof RecordListCommand>;
+export type RecordPlayCommandType = z.infer<typeof RecordPlayCommand>;
+export type RecordDeleteCommandType = z.infer<typeof RecordDeleteCommand>;
+export type RecordExportCommandType = z.infer<typeof RecordExportCommand>;
+export type RecordStatusCommandType = z.infer<typeof RecordStatusCommand>;
 
 /**
  * Parse and validate a command from JSON string or object

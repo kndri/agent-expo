@@ -203,3 +203,70 @@ export interface CompareResult {
   diffPixels: number;
   diffImageBase64?: string;
 }
+
+// ============================================
+// Recording Types
+// ============================================
+
+/**
+ * Target for a recorded step - can be ref, testID, label, or coordinates
+ */
+export interface RecordedTarget {
+  ref?: string;
+  testID?: string;
+  label?: string;
+  coordinates?: Point;
+}
+
+/**
+ * A single recorded step/action
+ */
+export interface RecordedStep {
+  action: string;
+  target?: RecordedTarget;
+  value?: string | number;
+  duration?: number;
+  timeout?: number;
+  timestamp: number; // Relative to recording start (ms)
+}
+
+/**
+ * Device info captured at recording start
+ */
+export interface RecordedDevice {
+  platform: Platform;
+  name: string;
+  osVersion?: string;
+}
+
+/**
+ * Complete recording metadata and steps
+ */
+export interface Recording {
+  name: string;
+  createdAt: string;
+  device: RecordedDevice;
+  steps: RecordedStep[];
+  duration: number; // Total duration in ms
+}
+
+/**
+ * Recording status info
+ */
+export interface RecordingStatus {
+  isRecording: boolean;
+  name?: string;
+  startedAt?: string;
+  stepCount?: number;
+}
+
+/**
+ * Recording list entry
+ */
+export interface RecordingInfo {
+  name: string;
+  createdAt: string;
+  device: RecordedDevice;
+  stepCount: number;
+  duration: number;
+}

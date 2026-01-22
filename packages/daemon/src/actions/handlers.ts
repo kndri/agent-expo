@@ -80,6 +80,16 @@ import type {
   PingCommandType,
   CacheStatsCommandType,
   CacheInvalidateCommandType,
+  RecordStartCommandType,
+  RecordStopCommandType,
+  RecordListCommandType,
+  RecordPlayCommandType,
+  RecordDeleteCommandType,
+  RecordExportCommandType,
+  RecordStatusCommandType,
+  Recording,
+  RecordingStatus,
+  RecordingInfo,
 } from '@agent-expo/protocol';
 import { success, error, ErrorCode } from '@agent-expo/protocol';
 import type { AppController } from '../app-controller.js';
@@ -159,6 +169,13 @@ type HandlerMap = {
   ping: Handler<PingCommandType, PingResponseData>;
   cacheStats: Handler<CacheStatsCommandType, { hits: number; misses: number; size: number; enabled: boolean; maxAge: number; version: number }>;
   cacheInvalidate: Handler<CacheInvalidateCommandType, { invalidated: true }>;
+  recordStart: Handler<RecordStartCommandType, { started: true; name: string }>;
+  recordStop: Handler<RecordStopCommandType, { stopped: true; recording: Recording | null }>;
+  recordList: Handler<RecordListCommandType, { recordings: RecordingInfo[] }>;
+  recordPlay: Handler<RecordPlayCommandType, { played: true; name: string }>;
+  recordDelete: Handler<RecordDeleteCommandType, { deleted: boolean; name: string }>;
+  recordExport: Handler<RecordExportCommandType, { exported: true; code: string }>;
+  recordStatus: Handler<RecordStatusCommandType, RecordingStatus>;
 };
 
 const handlers: HandlerMap = {
@@ -226,6 +243,13 @@ const handlers: HandlerMap = {
   // ============================================
 
   async tap(command, controller) {
+    // Record step if recording
+    controller.recordStep('tap', {
+      ref: command.ref,
+      testID: command.testID,
+      coordinates: command.coordinates,
+    });
+
     if (command.ref) {
       await controller.tap(command.ref, {
         count: command.count,
@@ -247,6 +271,13 @@ const handlers: HandlerMap = {
   },
 
   async doubleTap(command, controller) {
+    // Record step if recording
+    controller.recordStep('doubleTap', {
+      ref: command.ref,
+      testID: command.testID,
+      coordinates: command.coordinates,
+    });
+
     if (command.ref) {
       await controller.tap(command.ref, { count: 2 });
     } else if (command.testID) {
@@ -265,6 +296,13 @@ const handlers: HandlerMap = {
   async longPress(command, controller) {
     const duration = command.duration || 500;
 
+    // Record step if recording
+    controller.recordStep('longPress', {
+      ref: command.ref,
+      testID: command.testID,
+      coordinates: command.coordinates,
+    }, { duration });
+
     if (command.ref) {
       await controller.longPress(command.ref, duration);
     } else if (command.coordinates) {
@@ -276,6 +314,12 @@ const handlers: HandlerMap = {
   },
 
   async fill(command, controller) {
+    // Record step if recording
+    controller.recordStep('fill', {
+      ref: command.ref,
+      testID: command.testID,
+    }, { value: command.text });
+
     await controller.fill(command.ref || command.testID || '', command.text, command.clear);
     return success(command.id, {
       filled: true,
@@ -285,11 +329,20 @@ const handlers: HandlerMap = {
   },
 
   async clear(command, controller) {
+    // Record step if recording
+    controller.recordStep('clear', {
+      ref: command.ref,
+      testID: command.testID,
+    });
+
     await controller.clear(command.ref || command.testID || '');
     return success(command.id, { cleared: true, ref: command.ref });
   },
 
   async type(command, controller) {
+    // Record step if recording
+    controller.recordStep('type', undefined, { value: command.text });
+
     await controller.type(command.text);
     return success(command.id, { typed: true });
   },
@@ -299,6 +352,9 @@ const handlers: HandlerMap = {
   // ============================================
 
   async scroll(command, controller) {
+    // Record step if recording
+    controller.recordStep('scroll', { ref: command.ref }, { value: command.direction });
+
     if (command.toRef || command.toTestID) {
       const found = await controller.scrollToRef(command.toRef || command.toTestID || '', command.direction);
       return success(command.id, {
@@ -331,16 +387,25 @@ const handlers: HandlerMap = {
   // ============================================
 
   async navigate(command, controller) {
+    // Record step if recording
+    controller.recordStep('navigate', undefined, { value: command.url });
+
     await controller.navigate(command.url);
     return success(command.id, { navigated: true, url: command.url });
   },
 
   async back(command, controller) {
+    // Record step if recording
+    controller.recordStep('back');
+
     await controller.pressBack();
     return success(command.id, { pressed: 'back' });
   },
 
   async home(command, controller) {
+    // Record step if recording
+    controller.recordStep('home');
+
     await controller.pressHome();
     return success(command.id, { pressed: 'home' });
   },
@@ -442,6 +507,12 @@ const handlers: HandlerMap = {
   },
 
   async waitFor(command, controller) {
+    // Record step if recording
+    controller.recordStep('waitFor', {
+      ref: command.ref,
+      testID: command.testID,
+    }, { timeout: command.timeout });
+
     const timeout = command.timeout || 5000;
     const start = Date.now();
 
@@ -588,6 +659,9 @@ const handlers: HandlerMap = {
   },
 
   async pressKey(command, controller) {
+    // Record step if recording
+    controller.recordStep('pressKey', undefined, { value: command.key });
+
     await controller.pressKey(command.key);
     return success(command.id, { pressed: true });
   },
@@ -630,5 +704,44 @@ const handlers: HandlerMap = {
   async cacheInvalidate(command, controller) {
     await controller.invalidateCache();
     return success(command.id, { invalidated: true });
+  },
+
+  // ============================================
+  // Recording
+  // ============================================
+
+  async recordStart(command, controller) {
+    controller.startRecording(command.name);
+    return success(command.id, { started: true, name: command.name });
+  },
+
+  async recordStop(command, controller) {
+    const recording = controller.stopRecording();
+    return success(command.id, { stopped: true, recording });
+  },
+
+  async recordList(command, controller) {
+    const recordings = controller.listRecordings();
+    return success(command.id, { recordings });
+  },
+
+  async recordPlay(command, controller) {
+    await controller.playRecording(command.name, command.speed || 1.0);
+    return success(command.id, { played: true, name: command.name });
+  },
+
+  async recordDelete(command, controller) {
+    const deleted = controller.deleteRecording(command.name);
+    return success(command.id, { deleted, name: command.name });
+  },
+
+  async recordExport(command, controller) {
+    const code = controller.exportRecording(command.name, command.format);
+    return success(command.id, { exported: true, code });
+  },
+
+  async recordStatus(command, controller) {
+    const status = controller.getRecordingStatus();
+    return success(command.id, status);
   },
 };

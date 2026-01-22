@@ -55,6 +55,13 @@ export {
   PingCommand,
   CacheStatsCommand,
   CacheInvalidateCommand,
+  RecordStartCommand,
+  RecordStopCommand,
+  RecordListCommand,
+  RecordPlayCommand,
+  RecordDeleteCommand,
+  RecordExportCommand,
+  RecordStatusCommand,
   // Utilities
   parseCommand,
   safeParseCommand,
@@ -103,6 +110,13 @@ export {
   type PingCommandType,
   type CacheStatsCommandType,
   type CacheInvalidateCommandType,
+  type RecordStartCommandType,
+  type RecordStopCommandType,
+  type RecordListCommandType,
+  type RecordPlayCommandType,
+  type RecordDeleteCommandType,
+  type RecordExportCommandType,
+  type RecordStatusCommandType,
 } from './commands.js';
 
 // Responses

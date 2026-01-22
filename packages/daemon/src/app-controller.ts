@@ -21,11 +21,16 @@ import {
   type Viewport,
   type ScrollDirection,
   type Point,
+  type Recording,
+  type RecordingStatus,
+  type RecordingInfo,
+  type RecordedTarget,
 } from '@agent-expo/protocol';
 import { DeviceManager } from './simulator/index.js';
 import type { BridgeServer } from './bridge/server.js';
 import { SnapshotEngine } from './snapshot/engine.js';
 import { VisualComparator, type CompareOptions, type ComparisonResult } from './visual/comparator.js';
+import { RecordingManager } from './recording/index.js';
 
 const log = logger.child('controller');
 
@@ -57,6 +62,7 @@ export class AppController {
   private bridgeServer: BridgeServer | null = null;
   private snapshotEngine: SnapshotEngine;
   private visualComparator: VisualComparator;
+  private recordingManager: RecordingManager;
   private currentBundleId: string | null = null;
   private refMap: RefMap = {};
 
@@ -64,6 +70,7 @@ export class AppController {
     this.deviceManager = new DeviceManager();
     this.snapshotEngine = new SnapshotEngine();
     this.visualComparator = new VisualComparator();
+    this.recordingManager = new RecordingManager();
   }
 
   /**
@@ -827,6 +834,256 @@ export class AppController {
       } catch {
         log.debug('Failed to invalidate cache via bridge');
       }
+    }
+  }
+
+  // ============================================
+  // Recording
+  // ============================================
+
+  /**
+   * Start recording interactions
+   */
+  startRecording(name: string): void {
+    const device = this.deviceManager.getActiveDevice();
+    if (!device) {
+      throw Errors.NO_ACTIVE_DEVICE();
+    }
+
+    this.recordingManager.startRecording(name, {
+      platform: device.platform,
+      name: device.name,
+      osVersion: device.osVersion,
+    });
+  }
+
+  /**
+   * Stop recording and save
+   */
+  stopRecording(): Recording | null {
+    return this.recordingManager.stopRecording();
+  }
+
+  /**
+   * Record an action step (called internally when recording is active)
+   */
+  recordStep(
+    action: string,
+    target?: RecordedTarget,
+    options?: {
+      value?: string | number;
+      duration?: number;
+      timeout?: number;
+    }
+  ): void {
+    if (this.recordingManager.isRecording()) {
+      this.recordingManager.recordStep(action, target, options);
+    }
+  }
+
+  /**
+   * Check if currently recording
+   */
+  isRecording(): boolean {
+    return this.recordingManager.isRecording();
+  }
+
+  /**
+   * Get recording status
+   */
+  getRecordingStatus(): RecordingStatus {
+    return this.recordingManager.getStatus();
+  }
+
+  /**
+   * List all recordings
+   */
+  listRecordings(): RecordingInfo[] {
+    return this.recordingManager.listRecordings();
+  }
+
+  /**
+   * Load a recording
+   */
+  loadRecording(name: string): Recording {
+    return this.recordingManager.loadRecording(name);
+  }
+
+  /**
+   * Delete a recording
+   */
+  deleteRecording(name: string): boolean {
+    return this.recordingManager.deleteRecording(name);
+  }
+
+  /**
+   * Play back a recording
+   */
+  async playRecording(name: string, speed: number = 1.0): Promise<void> {
+    const recording = this.recordingManager.loadRecording(name);
+    log.info(`Playing recording: ${recording.name} (${recording.steps.length} steps)`);
+
+    let lastTimestamp = 0;
+
+    for (const step of recording.steps) {
+      // Wait for appropriate delay based on timestamps
+      const delay = (step.timestamp - lastTimestamp) / speed;
+      if (delay > 0) {
+        await this.sleep(delay);
+      }
+      lastTimestamp = step.timestamp;
+
+      // Execute the step
+      await this.executeStep(step);
+    }
+
+    log.info(`Recording playback completed: ${recording.name}`);
+  }
+
+  /**
+   * Execute a single recorded step
+   */
+  private async executeStep(step: {
+    action: string;
+    target?: RecordedTarget;
+    value?: string | number;
+    duration?: number;
+    timeout?: number;
+  }): Promise<void> {
+    const { action, target, value, duration, timeout } = step;
+
+    switch (action) {
+      case 'tap':
+        if (target?.ref) {
+          await this.tap(target.ref);
+        } else if (target?.testID) {
+          await this.tapByTestID(target.testID);
+        } else if (target?.coordinates) {
+          await this.tapCoordinates(target.coordinates.x, target.coordinates.y);
+        }
+        break;
+
+      case 'doubleTap':
+        if (target?.ref) {
+          await this.tap(target.ref, { count: 2 });
+        } else if (target?.testID) {
+          // Refresh snapshot to get ref, then tap twice
+          await this.getSnapshot({ interactive: true });
+          const ref = Object.entries(this.refMap).find(
+            ([_, entry]) => entry.testID === target.testID
+          )?.[0];
+          if (ref) {
+            await this.tap(ref, { count: 2 });
+          }
+        }
+        break;
+
+      case 'longPress':
+        if (target?.ref) {
+          await this.longPress(target.ref, duration);
+        }
+        break;
+
+      case 'fill':
+        if (target?.ref && typeof value === 'string') {
+          await this.fill(target.ref, value);
+        } else if (target?.testID && typeof value === 'string') {
+          // Refresh snapshot to get ref
+          await this.getSnapshot({ interactive: true });
+          const ref = Object.entries(this.refMap).find(
+            ([_, entry]) => entry.testID === target.testID
+          )?.[0];
+          if (ref) {
+            await this.fill(ref, value);
+          }
+        }
+        break;
+
+      case 'clear':
+        if (target?.ref) {
+          await this.clear(target.ref);
+        }
+        break;
+
+      case 'type':
+        if (typeof value === 'string') {
+          await this.type(value);
+        }
+        break;
+
+      case 'scroll':
+        if (typeof value === 'string') {
+          await this.scroll(value as ScrollDirection);
+        }
+        break;
+
+      case 'navigate':
+        if (typeof value === 'string') {
+          await this.navigate(value);
+        }
+        break;
+
+      case 'back':
+        await this.pressBack();
+        break;
+
+      case 'home':
+        await this.pressHome();
+        break;
+
+      case 'pressKey':
+        if (typeof value === 'string') {
+          await this.pressKey(value);
+        }
+        break;
+
+      case 'waitFor':
+        // For playback, we use a simpler polling approach
+        if (target?.ref || target?.testID) {
+          const maxWait = timeout || 5000;
+          const startTime = Date.now();
+          while (Date.now() - startTime < maxWait) {
+            await this.getSnapshot({ interactive: true });
+            if (target.ref && this.refMap[target.ref]) {
+              break;
+            }
+            if (
+              target.testID &&
+              Object.values(this.refMap).some((e) => e.testID === target.testID)
+            ) {
+              break;
+            }
+            await this.sleep(200);
+          }
+        }
+        break;
+
+      default:
+        log.warn(`Unknown action during playback: ${action}`);
+    }
+  }
+
+  /**
+   * Export a recording to code
+   */
+  exportRecording(
+    name: string,
+    format: 'typescript' | 'jest' | 'json'
+  ): string {
+    const recording = this.recordingManager.loadRecording(name);
+
+    switch (format) {
+      case 'typescript':
+        return this.recordingManager.exportToTypeScript(recording);
+
+      case 'jest':
+        return this.recordingManager.exportToJest(recording);
+
+      case 'json':
+        return JSON.stringify(recording, null, 2);
+
+      default:
+        throw new Error(`Unknown export format: ${format}`);
     }
   }
 
