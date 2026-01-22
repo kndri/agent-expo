@@ -5,7 +5,7 @@ This file tracks progress using the Ralph Loop pattern.
 ## Current Status
 
 **Phase:** Building
-**Current Task:** #15 - SDK Auto-Start Daemon Option
+**Current Task:** #18 - Documentation Improvements
 **Blocker:** None
 
 ## Task Queue (Prioritized)
@@ -55,10 +55,10 @@ This file tracks progress using the Ralph Loop pattern.
 
 ### Phase 3: Developer Experience
 
-- [ ] **#15** - SDK Auto-Start Daemon Option
-  - Add autoStart option to connect()
-  - Implement daemon process spawner
-  - Add health check methods
+- [x] **#15** - SDK Auto-Start Daemon Option ✅
+  - Added autoStart option to connect()
+  - Implemented daemon process spawner
+  - Added static health check methods
   - [Issue](https://github.com/kndri/agent-expo/issues/15)
 
 - [ ] **#18** - Documentation Improvements
@@ -152,6 +152,11 @@ This file tracks progress using the Ralph Loop pattern.
   - Added AGENT_EXPO_LOG_LEVEL env var support
   - Created child loggers with module prefixes (daemon, bridge, cli, sdk)
   - Replaced console.log calls throughout codebase
+- **Completed #15** - SDK auto-start daemon:
+  - Created daemon-starter.ts utility
+  - Added autoStart option to connect() method
+  - Added static methods: isDaemonRunning, startDaemon, stopDaemon
+  - Daemon spawns as detached process with logs to ~/.agent-expo/daemon.log
 
 ---
 
