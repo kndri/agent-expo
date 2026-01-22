@@ -261,7 +261,9 @@ export function isSuccess<T>(
 /**
  * Check if a response is an error
  */
-export function isError(response: Response<unknown>): response is ErrorResponse {
+export function isError(
+  response: Response<unknown>
+): response is { id: string; success: false; error: string; code?: string; details?: unknown } {
   return response.success === false;
 }
 
