@@ -14,6 +14,9 @@ export { AccessibilityTreeBuilder } from './accessibility/tree-builder';
 export type {
   AgentBridgeConfig,
   AgentBridgeContext,
+  EnhancedSnapshot,
+  SnapshotOptions,
+  AccessibilityNode,
   NetworkRequest,
   NetworkResponse,
   TrackedRequest,

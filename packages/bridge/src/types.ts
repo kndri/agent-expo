@@ -73,6 +73,17 @@ export interface EnhancedSnapshot {
   timestamp: string;
 }
 
+export interface SnapshotOptions {
+  /** Only include interactive elements (buttons, inputs, etc.) */
+  interactive?: boolean;
+  /** Use compact output (skip non-labeled generic nodes) */
+  compact?: boolean;
+  /** Maximum depth to traverse */
+  maxDepth?: number;
+  /** Filter out off-screen elements */
+  visibleOnly?: boolean;
+}
+
 export interface NetworkRequest {
   id: string;
   url: string;
@@ -132,7 +143,7 @@ export interface AgentBridgeContext {
   /** Is the bridge connected to the daemon */
   isConnected: boolean;
   /** Get the current accessibility snapshot */
-  getSnapshot: () => EnhancedSnapshot | null;
+  getSnapshot: (options?: SnapshotOptions) => Promise<EnhancedSnapshot>;
   /** Get tracked network requests */
   getRequests: () => TrackedRequest[];
   /** Get tracked Supabase calls */

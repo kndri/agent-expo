@@ -51,7 +51,6 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
   const supabaseCallsRef = useRef<SupabaseCall[]>([]);
   const convexCallsRef = useRef<ConvexCall[]>([]);
   const mocksRef = useRef<Map<string, MockConfig>>(new Map());
-  const rootRef = useRef<any>(null);
 
   // Skip in production unless explicitly enabled
   const shouldEnable = config.devOnly === false || __DEV__;
@@ -191,9 +190,14 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
 
   // Handle snapshot request
   const handleSnapshotRequest = useCallback(
-    (message: BridgeMessage) => {
+    async (message: BridgeMessage) => {
       try {
-        const snapshot = treeBuilderRef.current.buildSnapshot(rootRef.current);
+        const payload = message.payload as { interactive?: boolean; compact?: boolean; maxDepth?: number } | undefined;
+        const snapshot = await treeBuilderRef.current.buildSnapshotAsync({
+          interactive: payload?.interactive,
+          compact: payload?.compact,
+          maxDepth: payload?.maxDepth,
+        });
         sendResponse(message.id, true, snapshot);
       } catch (error) {
         sendResponse(message.id, false, undefined, String(error));
@@ -284,7 +288,7 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
   // Context value
   const contextValue: AgentBridgeContext = {
     isConnected,
-    getSnapshot: () => treeBuilderRef.current.buildSnapshot(rootRef.current),
+    getSnapshot: (options) => treeBuilderRef.current.buildSnapshotAsync(options),
     getRequests: () => [...requestsRef.current],
     getSupabaseCalls: () => [...supabaseCallsRef.current],
     getConvexCalls: () => [...convexCallsRef.current],
