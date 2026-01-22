@@ -9,6 +9,9 @@ import * as path from 'path';
 import * as os from 'os';
 import {
   Errors,
+  ExponentialBackoff,
+  delay,
+  type BackoffConfig,
   type Command,
   type Response,
   type Platform,
@@ -28,6 +31,8 @@ export interface ClientConfig {
   port?: number;
   /** Auto-start daemon if not running */
   autoStartDaemon?: boolean;
+  /** Connection retry options */
+  retry?: Partial<BackoffConfig>;
 }
 
 export interface ClientStatus {
@@ -41,6 +46,7 @@ export class AgentExpoClient {
   private socket: net.Socket | null = null;
   private session: string;
   private port: number | undefined;
+  private retryConfig: Partial<BackoffConfig> | undefined;
   private responseBuffer: string = '';
   private pendingResolve: ((response: Response<unknown>) => void) | null = null;
   private pendingReject: ((error: Error) => void) | null = null;
@@ -49,6 +55,7 @@ export class AgentExpoClient {
   constructor(config: ClientConfig = {}) {
     this.session = config.session || 'default';
     this.port = config.port;
+    this.retryConfig = config.retry;
     // autoStartDaemon will be used for auto-starting daemon in future
   }
 
@@ -73,6 +80,50 @@ export class AgentExpoClient {
   async connect(): Promise<void> {
     if (this.socket) return;
 
+    return this.attemptConnect();
+  }
+
+  /**
+   * Connect with retry using exponential backoff
+   *
+   * @param options Optional backoff configuration to override constructor config
+   */
+  async connectWithRetry(options?: Partial<BackoffConfig>): Promise<void> {
+    if (this.socket) return;
+
+    const backoff = new ExponentialBackoff({
+      ...this.retryConfig,
+      ...options,
+    });
+
+    let lastError: Error | undefined;
+
+    while (backoff.shouldRetry()) {
+      try {
+        await this.attemptConnect();
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        this.socket = null;
+
+        if (!backoff.shouldRetry()) {
+          break;
+        }
+
+        const retryDelay = backoff.nextDelay();
+        const attempt = backoff.getAttempt();
+        console.log(`[SDK] Retrying connection in ${retryDelay}ms (attempt ${attempt})`);
+        await delay(retryDelay);
+      }
+    }
+
+    throw lastError || Errors.DAEMON_NOT_RUNNING();
+  }
+
+  /**
+   * Internal method to attempt a single connection
+   */
+  private attemptConnect(): Promise<void> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Connection timeout'));

@@ -150,3 +150,12 @@ export {
 
 // Errors
 export { AgentExpoError, isAgentExpoError, Errors } from './errors/index.js';
+
+// Utilities
+export {
+  ExponentialBackoff,
+  DEFAULT_BACKOFF,
+  delay,
+  withBackoff,
+  type BackoffConfig,
+} from './utils/backoff.js';

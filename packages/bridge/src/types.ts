@@ -2,6 +2,19 @@
  * Type definitions for the bridge
  */
 
+export interface ReconnectConfig {
+  /** Enable automatic reconnection (default: true) */
+  enabled?: boolean;
+  /** Initial delay in ms (default: 1000) */
+  initialDelay?: number;
+  /** Maximum delay cap in ms (default: 30000) */
+  maxDelay?: number;
+  /** Delay multiplier (default: 2) */
+  multiplier?: number;
+  /** Maximum reconnection attempts (default: unlimited) */
+  maxAttempts?: number;
+}
+
 export interface AgentBridgeConfig {
   /** WebSocket port for daemon connection */
   port?: number;
@@ -13,6 +26,8 @@ export interface AgentBridgeConfig {
   trackConvex?: boolean;
   /** Enable in development mode only */
   devOnly?: boolean;
+  /** Reconnection configuration */
+  reconnect?: ReconnectConfig;
 }
 
 export interface Bounds {

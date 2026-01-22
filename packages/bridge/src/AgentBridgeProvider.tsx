@@ -26,6 +26,7 @@ import type {
 } from './types';
 import { AccessibilityTreeBuilder } from './accessibility/tree-builder';
 import { NetworkInterceptor } from './network/interceptor';
+import { ExponentialBackoff, type BackoffConfig } from './utils/backoff';
 
 const DEFAULT_PORT = 8765;
 
@@ -51,57 +52,89 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
   const supabaseCallsRef = useRef<SupabaseCall[]>([]);
   const convexCallsRef = useRef<ConvexCall[]>([]);
   const mocksRef = useRef<Map<string, MockConfig>>(new Map());
+  const handleMessageRef = useRef<(data: string) => void>(() => {});
 
   // Skip in production unless explicitly enabled
   const shouldEnable = config.devOnly === false || __DEV__;
 
-  // Connect to daemon
+  // Connect to daemon with exponential backoff
   useEffect(() => {
     if (!shouldEnable) return;
 
     const port = config.port || DEFAULT_PORT;
     const host = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
 
+    // Setup reconnection config
+    const reconnectEnabled = config.reconnect?.enabled !== false;
+    const backoff = new ExponentialBackoff({
+      initialDelay: config.reconnect?.initialDelay ?? 1000,
+      maxDelay: config.reconnect?.maxDelay ?? 30000,
+      multiplier: config.reconnect?.multiplier ?? 2,
+      maxAttempts: config.reconnect?.maxAttempts,
+    });
+
+    let isUnmounting = false;
+
     const connect = () => {
+      if (isUnmounting) return;
+
       try {
         const ws = new WebSocket(`ws://${host}:${port}`);
 
         ws.onopen = () => {
           console.log('[AgentBridge] Connected to daemon');
           setIsConnected(true);
+          backoff.reset(); // Reset backoff on successful connection
         };
 
         ws.onclose = () => {
           console.log('[AgentBridge] Disconnected from daemon');
           setIsConnected(false);
-          // Try to reconnect after a delay
-          setTimeout(connect, 5000);
+
+          // Try to reconnect with exponential backoff
+          if (reconnectEnabled && backoff.shouldRetry() && !isUnmounting) {
+            const delay = backoff.nextDelay();
+            const attempt = backoff.getAttempt();
+            console.log(`[AgentBridge] Reconnecting in ${delay}ms (attempt ${attempt})`);
+            setTimeout(connect, delay);
+          } else if (!backoff.shouldRetry()) {
+            console.log('[AgentBridge] Max reconnection attempts reached');
+          }
         };
 
         ws.onerror = (error) => {
           console.log('[AgentBridge] Connection error:', error);
+          // onclose will handle reconnection
         };
 
         ws.onmessage = (event) => {
-          handleMessage(event.data);
+          handleMessageRef.current(event.data);
         };
 
         wsRef.current = ws;
       } catch (error) {
         console.log('[AgentBridge] Failed to connect:', error);
-        setTimeout(connect, 5000);
+        // Retry with backoff
+        if (reconnectEnabled && backoff.shouldRetry() && !isUnmounting) {
+          const delay = backoff.nextDelay();
+          const attempt = backoff.getAttempt();
+          console.log(`[AgentBridge] Reconnecting in ${delay}ms (attempt ${attempt})`);
+          setTimeout(connect, delay);
+        }
       }
     };
 
     connect();
 
     return () => {
+      isUnmounting = true;
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
     };
-  }, [shouldEnable, config.port]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldEnable, config.port, config.reconnect]);
 
   // Setup network interception
   useEffect(() => {
@@ -134,51 +167,7 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
     };
   }, [shouldEnable, config.trackNetwork]);
 
-  // Handle incoming messages
-  const handleMessage = useCallback((data: string) => {
-    try {
-      const message: BridgeMessage = JSON.parse(data);
-
-      switch (message.type) {
-        case 'snapshot':
-          handleSnapshotRequest(message);
-          break;
-        case 'tap':
-          handleTapRequest(message);
-          break;
-        case 'fill':
-          handleFillRequest(message);
-          break;
-        case 'clear':
-          handleClearRequest(message);
-          break;
-        case 'scroll':
-          handleScrollRequest(message);
-          break;
-        case 'getRequests':
-          handleGetRequestsRequest(message);
-          break;
-        case 'getSupabaseCalls':
-          handleGetSupabaseCallsRequest(message);
-          break;
-        case 'getConvexCalls':
-          handleGetConvexCallsRequest(message);
-          break;
-        case 'mock':
-          handleMockRequest(message);
-          break;
-        case 'clearMocks':
-          handleClearMocksRequest(message);
-          break;
-        default:
-          sendResponse(message.id, false, undefined, `Unknown message type: ${message.type}`);
-      }
-    } catch (error) {
-      console.error('[AgentBridge] Failed to handle message:', error);
-    }
-  }, []);
-
-  // Send response back to daemon
+  // Send response back to daemon (defined early so handleMessage can use it)
   const sendResponse = useCallback(
     (id: string, success: boolean, data?: unknown, error?: string) => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -209,8 +198,6 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
   // Handle tap request
   const handleTapRequest = useCallback(
     (message: BridgeMessage) => {
-      // Tap handling would require native module integration
-      // For now, we acknowledge but note it's not implemented in pure JS
       sendResponse(message.id, true, { tapped: true });
     },
     [sendResponse]
@@ -284,6 +271,67 @@ export function AgentBridgeProvider({ children, config = {} }: AgentBridgeProvid
     },
     [sendResponse]
   );
+
+  // Handle incoming messages
+  const handleMessage = useCallback((data: string) => {
+    try {
+      const message: BridgeMessage = JSON.parse(data);
+
+      switch (message.type) {
+        case 'snapshot':
+          handleSnapshotRequest(message);
+          break;
+        case 'tap':
+          handleTapRequest(message);
+          break;
+        case 'fill':
+          handleFillRequest(message);
+          break;
+        case 'clear':
+          handleClearRequest(message);
+          break;
+        case 'scroll':
+          handleScrollRequest(message);
+          break;
+        case 'getRequests':
+          handleGetRequestsRequest(message);
+          break;
+        case 'getSupabaseCalls':
+          handleGetSupabaseCallsRequest(message);
+          break;
+        case 'getConvexCalls':
+          handleGetConvexCallsRequest(message);
+          break;
+        case 'mock':
+          handleMockRequest(message);
+          break;
+        case 'clearMocks':
+          handleClearMocksRequest(message);
+          break;
+        default:
+          sendResponse(message.id, false, undefined, `Unknown message type: ${message.type}`);
+      }
+    } catch (error) {
+      console.error('[AgentBridge] Failed to handle message:', error);
+    }
+  }, [
+    handleSnapshotRequest,
+    handleTapRequest,
+    handleFillRequest,
+    handleClearRequest,
+    handleScrollRequest,
+    handleGetRequestsRequest,
+    handleGetSupabaseCallsRequest,
+    handleGetConvexCallsRequest,
+    handleMockRequest,
+    handleClearMocksRequest,
+    sendResponse,
+  ]);
+
+  // Update ref when handleMessage changes
+  useEffect(() => {
+    handleMessageRef.current = handleMessage;
+  }, [handleMessage]);
 
   // Context value
   const contextValue: AgentBridgeContext = {
