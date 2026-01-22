@@ -1,0 +1,30 @@
+{
+  "name": "@agent-expo/mock-bridge",
+  "version": "0.1.0",
+  "description": "Mock bridge for testing agent-expo without a real React Native app",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "agent-expo",
+    "testing",
+    "mock",
+    "react-native"
+  ],
+  "author": "kndri",
+  "license": "MIT",
+  "dependencies": {
+    "@agent-expo/protocol": "workspace:*",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.3.0"
+  }
+}
