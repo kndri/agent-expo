@@ -4,6 +4,51 @@ AI-powered automation for React Native and Expo applications.
 
 **agent-expo** enables AI agents to autonomously control, test, and verify React Native applications. Think of it as [agent-browser](https://github.com/anthropics/agent-browser) but for mobile apps.
 
+## Vision
+
+Enable AI agents to be first-class mobile app testers. Given a PRD or feature specification, an AI agent should be able to:
+
+1. **Launch** the app on a simulator/emulator
+2. **Navigate** through the UI using accessibility-based targeting
+3. **Verify** that features work as expected
+4. **Report** results with screenshots and API call verification
+
+This is like Cypress/Playwright for mobile - but designed for AI agents rather than human-written test scripts.
+
+## End State
+
+When complete, agent-expo will support:
+
+- **Bridge Mode** (apps you control) - Full accessibility tree, network tracking, API verification
+- **Native Mode** (any app) - Accessibility dump via system APIs, screenshot-based fallback
+- **Vision Mode** (universal) - Screenshot + AI for when accessibility data isn't available
+
+## Current Status
+
+See [GitHub Issues](https://github.com/kndri/agent-expo/issues) for detailed feature tracking.
+
+| Feature | Status |
+|---------|--------|
+| Daemon + CLI | Done |
+| Bridge Connection | Done |
+| Accessibility Tree (placeholder) | Done |
+| Real Accessibility Tree | Planned |
+| Native Mode (idb/adb) | Planned |
+| Android Support | Planned |
+| Visual Testing | Planned |
+
+## Development Approach
+
+This project uses **iterative AI-driven development** inspired by the [Ralph Loop pattern](https://awesomeclaude.ai/ralph-wiggum):
+
+1. Features are defined as GitHub Issues with clear requirements
+2. AI agent works on one feature at a time until complete
+3. Progress is tracked in `PROGRESS.md` between sessions
+4. Each feature must pass verification before moving on
+5. Final audit reviews code quality and identifies improvements
+
+---
+
 ## Features
 
 - **Accessibility-based element targeting** - Uses deterministic refs (`@e1`, `@e2`) from the accessibility tree
@@ -32,6 +77,10 @@ AI-powered automation for React Native and Expo applications.
 │  ┌──────────────────────────────────────────┐   │
 │  │           Device Manager                  │   │
 │  │  (iOS Simulator / Android Emulator)       │   │
+│  └──────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────┐   │
+│  │        WebSocket Bridge Server            │   │
+│  │  (Connects to in-app bridge)              │   │
 │  └──────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────┘
                         │
@@ -222,25 +271,6 @@ const newSnapshot = await client.snapshot();
 // AI sees: Welcome screen with user's name
 ```
 
-## Supabase/Convex Tracking
-
-Track API calls in your app:
-
-```tsx
-import { useSupabaseTracking } from '@agent-expo/bridge';
-
-function MyComponent() {
-  const { wrapClient, getCalls } = useSupabaseTracking();
-  const supabase = wrapClient(originalSupabaseClient);
-
-  // All Supabase calls are now tracked
-  await supabase.from('users').select('*');
-
-  // Check calls
-  const calls = getCalls({ table: 'users' });
-}
-```
-
 ## Development
 
 ```bash
@@ -271,14 +301,6 @@ pnpm dev
 3. **Bridge** (in-app module) provides rich accessibility data and network tracking
 4. **AI agents** receive structured snapshots with deterministic refs
 5. Agents can interact using refs (`@e1`, `@e2`) without complex selectors
-
-## Roadmap
-
-- [ ] Detox integration for robust element targeting
-- [ ] Visual regression testing
-- [ ] Record and replay
-- [ ] Expo Go support
-- [ ] Remote device farms (AWS Device Farm, BrowserStack)
 
 ## License
 
