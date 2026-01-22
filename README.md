@@ -103,8 +103,46 @@ await client.tap('@e1');
 ### Prerequisites
 
 - **Node.js 18+**
-- **For iOS:** Xcode, iOS Simulator, optionally [idb](https://fbidb.io/) for advanced features
+- **For iOS (macOS only):** Xcode, iOS Simulator, optionally [idb](https://fbidb.io/) for advanced features
 - **For Android:** Android Studio, Android Emulator, adb
+
+### Windows Installation
+
+Windows is supported for Android development only (iOS development requires macOS).
+
+**Prerequisites:**
+
+1. **Node.js 18+**: Download from https://nodejs.org
+
+2. **Android SDK** (for Android development):
+   - Download [Android Studio](https://developer.android.com/studio) or command-line tools
+   - Set `ANDROID_HOME` environment variable:
+     ```powershell
+     setx ANDROID_HOME "%LOCALAPPDATA%\Android\Sdk"
+     ```
+   - Add platform-tools to PATH:
+     ```powershell
+     setx PATH "%PATH%;%ANDROID_HOME%\platform-tools"
+     ```
+
+**Install:**
+
+```powershell
+npm install -g @agent-expo/cli
+```
+
+**Verify Installation:**
+
+```powershell
+agent-expo --version
+agent-expo devices list --platform android
+```
+
+**Notes:**
+
+- iOS development requires macOS
+- Windows uses TCP port 9876 instead of Unix socket for daemon communication
+- Ensure Windows Firewall allows Node.js connections
 
 ### Packages
 

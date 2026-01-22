@@ -13,6 +13,8 @@ import { Errors, logger } from '@agent-expo/protocol';
 
 const log = logger.child('starter');
 
+const DEFAULT_PORT = 9876;
+
 export interface DaemonStartOptions {
   /** How long to wait for daemon to start (ms) */
   timeout?: number;
@@ -57,9 +59,12 @@ export async function startDaemon(options: DaemonStartOptions = {}): Promise<voi
   const err = fs.openSync(logFile, 'a');
 
   // Spawn daemon as detached process
+  const isWindows = os.platform() === 'win32';
   const daemon = spawn('node', [daemonPath], {
     detached: true,
     stdio: ['ignore', out, err],
+    shell: isWindows, // Use shell on Windows for better compatibility
+    windowsHide: true, // Hide the console window on Windows
     env: {
       ...process.env,
       AGENT_EXPO_DAEMON: '1',
@@ -86,8 +91,9 @@ export async function isDaemonRunning(
   return new Promise((resolve) => {
     let socket: net.Socket;
 
-    if (os.platform() === 'win32' && port) {
-      socket = net.createConnection({ port, host: '127.0.0.1' });
+    if (os.platform() === 'win32') {
+      // Always use TCP on Windows
+      socket = net.createConnection({ port: port || DEFAULT_PORT, host: '127.0.0.1' });
     } else {
       const socketPath = getSocketPath(session);
       if (!fs.existsSync(socketPath)) {
@@ -193,8 +199,9 @@ export async function stopDaemon(
   return new Promise((resolve, reject) => {
     let socket: net.Socket;
 
-    if (os.platform() === 'win32' && port) {
-      socket = net.createConnection({ port, host: '127.0.0.1' });
+    if (os.platform() === 'win32') {
+      // Always use TCP on Windows
+      socket = net.createConnection({ port: port || DEFAULT_PORT, host: '127.0.0.1' });
     } else {
       const socketPath = getSocketPath(session);
       if (!fs.existsSync(socketPath)) {

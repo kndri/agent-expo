@@ -71,9 +71,12 @@ export class DaemonClient {
     // Start daemon in background
     const daemonPath = this.findDaemonScript();
 
+    const isWindows = os.platform() === 'win32';
     const child = spawn('node', [daemonPath], {
       detached: true,
       stdio: 'ignore',
+      shell: isWindows, // Use shell on Windows for better compatibility
+      windowsHide: true, // Hide the console window on Windows
       env: {
         ...process.env,
         AGENT_EXPO_SESSION: this.session,
