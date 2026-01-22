@@ -159,3 +159,13 @@ export {
   withBackoff,
   type BackoffConfig,
 } from './utils/backoff.js';
+
+// Logger
+export {
+  Logger,
+  LogLevel,
+  logger,
+  parseLogLevel,
+  getLogLevelName,
+  type LoggerConfig,
+} from './utils/logger.js';

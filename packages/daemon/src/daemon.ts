@@ -9,10 +9,12 @@ import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { parseCommand, serializeResponse, error, ErrorCode } from '@agent-expo/protocol';
+import { parseCommand, serializeResponse, error, ErrorCode, logger } from '@agent-expo/protocol';
 import { AppController } from './app-controller.js';
 import { executeCommand } from './actions/index.js';
 import { BridgeServer } from './bridge/server.js';
+
+const log = logger.child('daemon');
 
 const DEFAULT_PORT = 9876;
 const DEFAULT_BRIDGE_PORT = 8765;
@@ -69,7 +71,7 @@ export class Daemon {
     if (fs.existsSync(pidPath)) {
       const existingPid = parseInt(fs.readFileSync(pidPath, 'utf-8'), 10);
       if (this.isProcessRunning(existingPid)) {
-        console.log(`Daemon already running with PID ${existingPid}`);
+        log.info(`Daemon already running with PID ${existingPid}`);
         process.exit(0);
       }
       // Stale PID file, clean up
@@ -89,7 +91,7 @@ export class Daemon {
     try {
       await this.bridgeServer.start();
     } catch (err) {
-      console.error('Failed to start bridge server:', err);
+      log.error('Failed to start bridge server:', err);
       // Continue anyway - CLI will still work
     }
 
@@ -99,7 +101,7 @@ export class Daemon {
     // Setup cleanup handlers
     this.setupCleanup();
 
-    console.log(`Daemon started (PID: ${process.pid})`);
+    log.info(`Daemon started (PID: ${process.pid})`);
   }
 
   /**
@@ -117,12 +119,12 @@ export class Daemon {
       this.server = net.createServer((socket) => this.handleConnection(socket));
 
       this.server.on('error', (err) => {
-        console.error('Server error:', err);
+        log.error('Server error:', err);
         reject(err);
       });
 
       this.server.listen(socketPath, () => {
-        console.log(`Listening on ${socketPath}`);
+        log.info(`Listening on ${socketPath}`);
         // Set permissions so other users can connect
         fs.chmodSync(socketPath, 0o777);
         resolve();
@@ -140,12 +142,12 @@ export class Daemon {
       this.server = net.createServer((socket) => this.handleConnection(socket));
 
       this.server.on('error', (err) => {
-        console.error('Server error:', err);
+        log.error('Server error:', err);
         reject(err);
       });
 
       this.server.listen(port, '127.0.0.1', () => {
-        console.log(`Listening on TCP port ${port}`);
+        log.info(`Listening on TCP port ${port}`);
         resolve();
       });
     });
@@ -184,7 +186,7 @@ export class Daemon {
     });
 
     socket.on('error', (err) => {
-      console.error('Socket error:', err);
+      log.error('Socket error:', err);
       this.connections.delete(socket);
     });
   }
@@ -221,7 +223,7 @@ export class Daemon {
    */
   private setupCleanup(): void {
     const cleanup = () => {
-      console.log('\nShutting down daemon...');
+      log.info('Shutting down daemon...');
 
       // Close all CLI connections
       for (const socket of this.connections) {

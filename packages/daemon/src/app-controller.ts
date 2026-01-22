@@ -8,6 +8,7 @@
 import { v4 as uuid } from 'uuid';
 import {
   Errors,
+  logger,
   type Device,
   type Platform,
   type EnhancedSnapshot,
@@ -25,6 +26,8 @@ import { DeviceManager } from './simulator/index.js';
 import type { BridgeServer } from './bridge/server.js';
 import { SnapshotEngine } from './snapshot/engine.js';
 import { VisualComparator, type CompareOptions, type ComparisonResult } from './visual/comparator.js';
+
+const log = logger.child('controller');
 
 export interface LaunchConfig {
   platform: Platform;
@@ -236,7 +239,7 @@ export class AppController {
         return snapshot;
       } catch {
         // Fall through to native method
-        console.log('[AppController] Bridge snapshot failed, falling back to native');
+        log.debug('Bridge snapshot failed, falling back to native');
       }
     }
 
@@ -514,7 +517,7 @@ export class AppController {
 
       return filtered;
     } catch (error) {
-      console.error('[AppController] Failed to get network requests:', error);
+      log.error('Failed to get network requests:', error);
       return [];
     }
   }
@@ -565,7 +568,7 @@ export class AppController {
 
       return filtered;
     } catch (error) {
-      console.error('[AppController] Failed to get Supabase calls:', error);
+      log.error('Failed to get Supabase calls:', error);
       return [];
     }
   }
@@ -593,7 +596,7 @@ export class AppController {
 
       return filtered;
     } catch (error) {
-      console.error('[AppController] Failed to get Convex calls:', error);
+      log.error('Failed to get Convex calls:', error);
       return [];
     }
   }

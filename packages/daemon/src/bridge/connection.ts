@@ -9,12 +9,15 @@ import WebSocket from 'ws';
 import { v4 as uuid } from 'uuid';
 import {
   Errors,
+  logger,
   type EnhancedSnapshot,
   type TrackedRequest,
   type SupabaseCall,
   type ConvexCall,
   type MockConfig,
 } from '@agent-expo/protocol';
+
+const log = logger.child('connection');
 
 const DEFAULT_PORT = 8765;
 const CONNECTION_TIMEOUT = 5000;
@@ -120,7 +123,7 @@ export class BridgeConnection {
         const message = JSON.parse(data.toString()) as BridgeResponse;
         this.handleMessage(message);
       } catch (error) {
-        console.error('Failed to parse bridge message:', error);
+        log.error('Failed to parse bridge message:', error);
       }
     });
 
@@ -130,7 +133,7 @@ export class BridgeConnection {
     });
 
     this.ws.on('error', (error) => {
-      console.error('Bridge connection error:', error);
+      log.error('Bridge connection error:', error);
       this.connected = false;
     });
   }
@@ -287,7 +290,7 @@ export class BridgeConnection {
     this.mocks.set(pattern, mockConfig);
 
     if (this.isConnected()) {
-      this.request('mock', { pattern, config: mockConfig }).catch(console.error);
+      this.request('mock', { pattern, config: mockConfig }).catch((e) => log.error('Bridge request failed:', e));
     }
   }
 
@@ -297,7 +300,7 @@ export class BridgeConnection {
   clearMocks(): void {
     this.mocks.clear();
     if (this.isConnected()) {
-      this.request('clearMocks').catch(console.error);
+      this.request('clearMocks').catch((e) => log.error('Bridge request failed:', e));
     }
   }
 
@@ -335,7 +338,7 @@ export class BridgeConnection {
   clearSupabaseCalls(): void {
     this.supabaseCalls = [];
     if (this.isConnected()) {
-      this.request('clearSupabaseCalls').catch(console.error);
+      this.request('clearSupabaseCalls').catch((e) => log.error('Bridge request failed:', e));
     }
   }
 
@@ -373,7 +376,7 @@ export class BridgeConnection {
   clearConvexCalls(): void {
     this.convexCalls = [];
     if (this.isConnected()) {
-      this.request('clearConvexCalls').catch(console.error);
+      this.request('clearConvexCalls').catch((e) => log.error('Bridge request failed:', e));
     }
   }
 }

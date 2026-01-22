@@ -7,6 +7,7 @@
 
 import {
   Errors,
+  logger,
   type AccessibilityNode,
   type EnhancedSnapshot,
   type RefMap,
@@ -15,6 +16,8 @@ import {
   type AccessibilityRole,
 } from '@agent-expo/protocol';
 import type { DeviceManager } from '../simulator/manager.js';
+
+const log = logger.child('snapshot');
 
 interface SnapshotOptions {
   interactive?: boolean;
@@ -106,7 +109,7 @@ export class SnapshotEngine {
       const xml = await androidManager.dumpUIHierarchy();
       return this.parseAndroidXMLString(xml);
     } catch (error) {
-      console.error('[SnapshotEngine] Failed to capture Android tree:', error);
+      log.error('Failed to capture Android tree:', error);
       return this.createPlaceholderTree('Failed to capture Android accessibility tree');
     }
   }
@@ -124,7 +127,7 @@ export class SnapshotEngine {
       const accessibilityData = await iosManager.getAccessibilityTree();
       return this.parseIOSAccessibility(accessibilityData);
     } catch (error) {
-      console.error('[SnapshotEngine] Failed to capture iOS tree:', error);
+      log.error('Failed to capture iOS tree:', error);
       return this.createPlaceholderTree('Failed to capture iOS accessibility tree (idb may not be installed)');
     }
   }
@@ -272,7 +275,7 @@ export class SnapshotEngine {
         children,
       };
     } catch (error) {
-      console.error('[SnapshotEngine] Failed to parse Android XML:', error);
+      log.error('Failed to parse Android XML:', error);
       return this.createPlaceholderTree('Failed to parse Android XML');
     }
   }

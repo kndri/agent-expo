@@ -7,8 +7,10 @@
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuid } from 'uuid';
-import { Errors } from '@agent-expo/protocol';
+import { Errors, logger } from '@agent-expo/protocol';
 import type { AppController } from '../app-controller.js';
+
+const log = logger.child('bridge');
 
 const DEFAULT_BRIDGE_PORT = 8765;
 
@@ -58,12 +60,12 @@ export class BridgeServer {
         this.wss = new WebSocketServer({ port: this.port });
 
         this.wss.on('listening', () => {
-          console.log(`Bridge WebSocket server listening on port ${this.port}`);
+          log.info(`WebSocket server listening on port ${this.port}`);
           resolve();
         });
 
         this.wss.on('error', (error) => {
-          console.error('Bridge WebSocket server error:', error);
+          log.error('WebSocket server error:', error);
           reject(error);
         });
 
@@ -112,7 +114,7 @@ export class BridgeServer {
    */
   private handleConnection(ws: WebSocket, req: any): void {
     const clientId = uuid().substring(0, 8);
-    console.log(`[Bridge] Client ${clientId} connected from ${req.socket.remoteAddress}`);
+    log.info(`Client ${clientId} connected from ${req.socket.remoteAddress}`);
 
     this.clients.add(ws);
 
@@ -121,12 +123,12 @@ export class BridgeServer {
     });
 
     ws.on('close', () => {
-      console.log(`[Bridge] Client ${clientId} disconnected`);
+      log.info(`Client ${clientId} disconnected`);
       this.clients.delete(ws);
     });
 
     ws.on('error', (error) => {
-      console.error(`[Bridge] Client ${clientId} error:`, error);
+      log.error(`Client ${clientId} error:`, error);
       this.clients.delete(ws);
     });
   }
@@ -145,9 +147,9 @@ export class BridgeServer {
       }
 
       // Otherwise it's a message from the bridge (shouldn't happen in current design)
-      console.log(`[Bridge] Received message from ${clientId}:`, message);
+      log.debug(`Received message from ${clientId}:`, message);
     } catch (error) {
-      console.error(`[Bridge] Failed to parse message from ${clientId}:`, error);
+      log.error(`Failed to parse message from ${clientId}:`, error);
     }
   }
 

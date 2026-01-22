@@ -11,6 +11,7 @@ import {
   Errors,
   ExponentialBackoff,
   delay,
+  logger,
   type BackoffConfig,
   type Command,
   type Response,
@@ -23,6 +24,8 @@ import {
   type AssertionResult,
   type ScrollDirection,
 } from '@agent-expo/protocol';
+
+const log = logger.child('sdk');
 
 export interface ClientConfig {
   /** Session name for isolated instances */
@@ -112,7 +115,7 @@ export class AgentExpoClient {
 
         const retryDelay = backoff.nextDelay();
         const attempt = backoff.getAttempt();
-        console.log(`[SDK] Retrying connection in ${retryDelay}ms (attempt ${attempt})`);
+        log.debug(`Retrying connection in ${retryDelay}ms (attempt ${attempt})`);
         await delay(retryDelay);
       }
     }

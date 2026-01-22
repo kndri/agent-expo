@@ -5,6 +5,7 @@
  */
 
 import { Command } from 'commander';
+import { logger, parseLogLevel } from '@agent-expo/protocol';
 import { DaemonClient } from './daemon-client.js';
 import { registerLaunchCommand } from './commands/launch.js';
 import { registerSnapshotCommand } from './commands/snapshot.js';
@@ -25,7 +26,8 @@ export function createCLI(): Command {
     .version('0.1.0')
     .option('--json', 'Output in JSON format')
     .option('--silent', 'Suppress output')
-    .option('--session <name>', 'Session name for isolated instances', 'default');
+    .option('--session <name>', 'Session name for isolated instances', 'default')
+    .option('--log-level <level>', 'Log level (silent, error, warn, info, debug, trace)', 'info');
 
   return program;
 }
@@ -53,11 +55,15 @@ export async function runCLI(args: string[] = process.argv): Promise<void> {
   registerScreenshotCommands(program, client, outputOptions);
   registerStatusCommands(program, client, outputOptions);
 
-  // Add hook to update output options after parsing
+  // Add hook to update output options and log level after parsing
   program.hook('preAction', (thisCommand) => {
     const opts = thisCommand.opts();
     outputOptions.json = opts.json || false;
     outputOptions.silent = opts.silent || false;
+
+    // Set log level from CLI option or environment variable
+    const logLevel = opts.logLevel || process.env.AGENT_EXPO_LOG_LEVEL || 'info';
+    logger.setLevel(parseLogLevel(logLevel));
   });
 
   // Disconnect client after each command to allow process to exit
