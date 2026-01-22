@@ -5,7 +5,7 @@ This file tracks progress using the Ralph Loop pattern.
 ## Current Status
 
 **Phase:** Building
-**Current Task:** #18 - Documentation Improvements
+**Current Task:** #13 - Snapshot Caching
 **Blocker:** None
 
 ## Task Queue (Prioritized)
@@ -61,11 +61,11 @@ This file tracks progress using the Ralph Loop pattern.
   - Added static health check methods
   - [Issue](https://github.com/kndri/agent-expo/issues/15)
 
-- [ ] **#18** - Documentation Improvements
-  - Expand README sections
-  - Add CLI reference
-  - Add SDK examples
-  - Add troubleshooting guide
+- [x] **#18** - Documentation Improvements ✅
+  - Expanded README with TOC, quick start, CLI reference tables
+  - Added SDK examples and AI integration examples
+  - Created docs/API.md with full API reference
+  - Created docs/TROUBLESHOOTING.md
   - [Issue](https://github.com/kndri/agent-expo/issues/18)
 
 ### Phase 4: Performance
@@ -157,6 +157,15 @@ This file tracks progress using the Ralph Loop pattern.
   - Added autoStart option to connect() method
   - Added static methods: isDaemonRunning, startDaemon, stopDaemon
   - Daemon spawns as detached process with logs to ~/.agent-expo/daemon.log
+- **Completed #18** - Documentation improvements:
+  - Expanded README.md with table of contents
+  - Added quick start guide with copy-paste commands
+  - Added CLI reference tables for all commands
+  - Added SDK usage examples with all methods
+  - Added AI integration examples (Claude/OpenAI)
+  - Added visual testing and network mocking documentation
+  - Created docs/API.md with complete API reference
+  - Created docs/TROUBLESHOOTING.md with common issues
 
 ---
 
