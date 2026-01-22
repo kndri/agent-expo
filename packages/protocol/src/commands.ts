@@ -43,6 +43,7 @@ export const SnapshotCommand = BaseCommand.extend({
   compact: z.boolean().optional(), // Compact output
   maxDepth: z.number().optional(), // Limit tree depth
   withScreenshot: z.boolean().optional(), // Include base64 screenshot
+  native: z.boolean().optional(), // Use native accessibility APIs instead of bridge
 });
 
 // ============================================

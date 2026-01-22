@@ -19,7 +19,40 @@ interface SnapshotOptions {
   interactive?: boolean;
   compact?: boolean;
   maxDepth?: number;
+  native?: boolean;
 }
+
+// iOS Accessibility role mapping
+const IOS_ROLE_MAP: Record<string, string> = {
+  AXButton: 'button',
+  AXLink: 'link',
+  AXImage: 'image',
+  AXStaticText: 'text',
+  AXTextField: 'textbox',
+  AXTextArea: 'textbox',
+  AXSearchField: 'searchbox',
+  AXCheckBox: 'checkbox',
+  AXRadioButton: 'radio',
+  AXSlider: 'slider',
+  AXSwitch: 'switch',
+  AXTabBar: 'tablist',
+  AXTab: 'tab',
+  AXScrollView: 'scrollview',
+  AXList: 'list',
+  AXCell: 'listitem',
+  AXTable: 'table',
+  AXHeader: 'heading',
+  AXNavigationBar: 'navigation',
+  AXToolbar: 'toolbar',
+  AXMenu: 'menu',
+  AXMenuItem: 'menuitem',
+  AXAlert: 'alert',
+  AXDialog: 'dialog',
+  AXProgressIndicator: 'progressbar',
+  AXGroup: 'group',
+  AXWindow: 'window',
+  AXApplication: 'application',
+};
 
 export class SnapshotEngine {
   private refCounter: number = 0;
@@ -63,65 +96,191 @@ export class SnapshotEngine {
    * Capture accessibility tree from Android using uiautomator
    */
   private async captureAndroidTree(deviceManager: DeviceManager): Promise<AccessibilityNode> {
-    // This would call deviceManager's Android manager to dump UI hierarchy
-    // For now, return a placeholder
-    // In real implementation:
-    // const xml = await androidManager.dumpUIHierarchy();
-    // return this.parseAndroidXML(xml);
+    try {
+      const androidManager = deviceManager.getAndroidManager();
+      if (!androidManager) {
+        return this.createPlaceholderTree('Android manager not available');
+      }
 
-    return this.createPlaceholderTree();
+      const xml = await androidManager.dumpUIHierarchy();
+      return this.parseAndroidXMLString(xml);
+    } catch (error) {
+      console.error('[SnapshotEngine] Failed to capture Android tree:', error);
+      return this.createPlaceholderTree('Failed to capture Android accessibility tree');
+    }
   }
 
   /**
-   * Capture accessibility tree from iOS
+   * Capture accessibility tree from iOS using idb
    */
   private async captureIOSTree(deviceManager: DeviceManager): Promise<AccessibilityNode> {
-    // This would use idb or accessibility inspector to get the tree
-    // For now, return a placeholder
+    try {
+      const iosManager = deviceManager.getIOSManager();
+      if (!iosManager) {
+        return this.createPlaceholderTree('iOS manager not available');
+      }
 
-    return this.createPlaceholderTree();
+      const accessibilityData = await iosManager.getAccessibilityTree();
+      return this.parseIOSAccessibility(accessibilityData);
+    } catch (error) {
+      console.error('[SnapshotEngine] Failed to capture iOS tree:', error);
+      return this.createPlaceholderTree('Failed to capture iOS accessibility tree (idb may not be installed)');
+    }
   }
 
   /**
-   * Create a placeholder tree for development
+   * Parse iOS accessibility data into AccessibilityNode tree
    */
-  private createPlaceholderTree(): AccessibilityNode {
+  private parseIOSAccessibility(data: any): AccessibilityNode {
+    if (!data) {
+      return this.createPlaceholderTree('No iOS accessibility data');
+    }
+
+    // Handle array of elements
+    if (data.elements && Array.isArray(data.elements)) {
+      const children = data.elements.map((el: any) => this.parseIOSElement(el));
+      return {
+        ref: '',
+        role: 'application',
+        label: 'iOS App',
+        bounds: { x: 0, y: 0, width: 390, height: 844 },
+        children,
+      };
+    }
+
+    // Handle single element with nested children
+    return this.parseIOSElement(data);
+  }
+
+  /**
+   * Parse a single iOS accessibility element
+   */
+  private parseIOSElement(element: any): AccessibilityNode {
+    const type = element.type || element.AXType || element.role || 'AXGroup';
+    const role = IOS_ROLE_MAP[type] || 'none';
+
+    const frame = element.frame || element.AXFrame || {};
+    const bounds = {
+      x: frame.x || frame.X || 0,
+      y: frame.y || frame.Y || 0,
+      width: frame.width || frame.Width || 0,
+      height: frame.height || frame.Height || 0,
+    };
+
+    const label = element.label || element.AXLabel || element.AXValue || element.title;
+    const hint = element.hint || element.AXHint;
+    const identifier = element.identifier || element.AXIdentifier;
+
+    const children: AccessibilityNode[] = [];
+    if (element.children && Array.isArray(element.children)) {
+      for (const child of element.children) {
+        children.push(this.parseIOSElement(child));
+      }
+    }
+
+    return {
+      ref: '',
+      role,
+      label: label ? String(label) : undefined,
+      hint: hint ? String(hint) : undefined,
+      testID: identifier ? String(identifier) : undefined,
+      bounds,
+      state: {
+        disabled: element.enabled === false || element.AXEnabled === false,
+        selected: element.selected === true || element.AXSelected === true,
+      },
+      children,
+    };
+  }
+
+  /**
+   * Create a placeholder tree for development or errors
+   */
+  private createPlaceholderTree(message?: string): AccessibilityNode {
     return {
       ref: '',
       role: 'none',
-      label: 'App Root',
+      label: message || 'App Root',
       bounds: { x: 0, y: 0, width: 390, height: 844 },
       children: [],
     };
   }
 
   /**
-   * Parse Android UI Automator XML into AccessibilityNode tree
+   * Parse Android UI Automator XML string into AccessibilityNode tree
    */
-  parseAndroidXML(xml: string): AccessibilityNode {
-    // Parse XML and convert to AccessibilityNode format
-    // This is a simplified implementation
+  parseAndroidXMLString(xml: string): AccessibilityNode {
+    // Simple regex-based XML parsing (lightweight, no external dependency)
+    const nodeRegex = /<node\s+([^>]+)(?:\/>|>([\s\S]*?)<\/node>)/g;
+    const attrRegex = /(\w+(?:-\w+)*)="([^"]*)"/g;
 
-    const parseNode = (element: any): AccessibilityNode => {
-      const bounds = this.parseAndroidBounds(element.getAttribute?.('bounds') || '');
+    const parseAttributes = (attrString: string): Record<string, string> => {
+      const attrs: Record<string, string> = {};
+      let match;
+      while ((match = attrRegex.exec(attrString)) !== null) {
+        attrs[match[1]] = match[2];
+      }
+      attrRegex.lastIndex = 0; // Reset regex
+      return attrs;
+    };
+
+    const parseNodes = (content: string): AccessibilityNode[] => {
+      const nodes: AccessibilityNode[] = [];
+      let match;
+
+      while ((match = nodeRegex.exec(content)) !== null) {
+        const attrs = parseAttributes(match[1]);
+        const innerContent = match[2] || '';
+
+        const bounds = this.parseAndroidBounds(attrs['bounds'] || '');
+        const className = attrs['class'] || '';
+        const role = this.mapAndroidClass(className);
+
+        const node: AccessibilityNode = {
+          ref: '',
+          role,
+          label: attrs['content-desc'] || attrs['text'] || undefined,
+          testID: attrs['resource-id'] || undefined,
+          state: {
+            disabled: attrs['enabled'] === 'false',
+            checked: attrs['checked'] === 'true' ? true : attrs['checked'] === 'false' ? false : undefined,
+            selected: attrs['selected'] === 'true',
+          },
+          bounds,
+          children: innerContent ? parseNodes(innerContent) : [],
+        };
+
+        // Only include nodes with meaningful content
+        if (node.label || node.testID || node.role !== 'none' || node.children.length > 0) {
+          nodes.push(node);
+        }
+      }
+
+      nodeRegex.lastIndex = 0; // Reset regex
+      return nodes;
+    };
+
+    try {
+      const children = parseNodes(xml);
 
       return {
         ref: '',
-        role: this.mapAndroidClass(element.getAttribute?.('class') || ''),
-        label: element.getAttribute?.('content-desc') || element.getAttribute?.('text') || undefined,
-        testID: element.getAttribute?.('resource-id') || undefined,
-        state: {
-          disabled: element.getAttribute?.('enabled') === 'false',
-          checked: element.getAttribute?.('checked') === 'true',
-          selected: element.getAttribute?.('selected') === 'true',
-        },
-        bounds,
-        children: [],
+        role: 'application',
+        label: 'Android App',
+        bounds: { x: 0, y: 0, width: 1080, height: 2400 }, // Common Android resolution
+        children,
       };
-    };
+    } catch (error) {
+      console.error('[SnapshotEngine] Failed to parse Android XML:', error);
+      return this.createPlaceholderTree('Failed to parse Android XML');
+    }
+  }
 
-    // For now, return placeholder
-    return this.createPlaceholderTree();
+  /**
+   * Parse Android UI Automator XML into AccessibilityNode tree (deprecated - use parseAndroidXMLString)
+   */
+  parseAndroidXML(xml: string): AccessibilityNode {
+    return this.parseAndroidXMLString(xml);
   }
 
   /**

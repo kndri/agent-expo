@@ -4,9 +4,30 @@ This file tracks progress between AI development sessions using the Ralph Loop p
 
 ## Current Feature
 
-**Feature 2: Native Mode (idb/adb)** - [Issue #2](https://github.com/kndri/agent-expo/issues/2)
+**Feature 3: Android Support** - [Issue #3](https://github.com/kndri/agent-expo/issues/3)
 
 ## Session Log
+
+### Session 2026-01-22 - Feature 2: Native Mode (idb/adb) ✅
+
+**Completed:**
+- Added iOS accessibility dump via `idb ui describe-all`
+- Added Android accessibility dump via `adb shell uiautomator dump`
+- Implemented XML parsing for Android UI Automator output
+- Implemented iOS accessibility data parsing
+- Added `--native` CLI flag to force native mode
+- Auto-detection: uses bridge when available, falls back to native
+- Added iOS/Android role mapping to standard accessibility roles
+
+**Technical Details:**
+- iOS: Uses `idb ui describe-all` command, parses JSON/text output
+- Android: Uses `adb shell uiautomator dump`, parses XML
+- DeviceManager exposes getIOSManager() and getAndroidManager()
+- SnapshotEngine handles platform-specific parsing
+
+**Requirements:**
+- iOS native mode requires idb: `brew install idb-companion`
+- Android native mode requires adb in PATH
 
 ### Session 2026-01-22 - Feature 1: Real Accessibility Tree ✅
 
@@ -69,8 +90,8 @@ This file tracks progress between AI development sessions using the Ralph Loop p
 | # | Feature | Issue | Status |
 |---|---------|-------|--------|
 | 1 | Real Accessibility Tree | [#1](https://github.com/kndri/agent-expo/issues/1) | ✅ Complete |
-| 2 | Native Mode (idb/adb) | [#2](https://github.com/kndri/agent-expo/issues/2) | **Current** |
-| 3 | Android Support | [#3](https://github.com/kndri/agent-expo/issues/3) | Not Started |
+| 2 | Native Mode (idb/adb) | [#2](https://github.com/kndri/agent-expo/issues/2) | ✅ Complete |
+| 3 | Android Support | [#3](https://github.com/kndri/agent-expo/issues/3) | **Current** |
 | 4 | Network Tracking | [#4](https://github.com/kndri/agent-expo/issues/4) | Not Started |
 | 5 | AI Agent SDK | [#5](https://github.com/kndri/agent-expo/issues/5) | Not Started |
 | 6 | Visual Testing | [#6](https://github.com/kndri/agent-expo/issues/6) | Not Started |

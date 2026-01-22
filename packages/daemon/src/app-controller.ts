@@ -38,6 +38,7 @@ export interface SnapshotOptions {
   compact?: boolean;
   maxDepth?: number;
   withScreenshot?: boolean;
+  native?: boolean;
 }
 
 export interface TapOptions {
@@ -213,6 +214,16 @@ export class AppController {
    * Get an accessibility snapshot
    */
   async getSnapshot(options: SnapshotOptions = {}): Promise<EnhancedSnapshot> {
+    // If native mode is forced, skip bridge
+    if (options.native) {
+      const snapshot = await this.snapshotEngine.captureFromDevice(
+        this.deviceManager,
+        options
+      );
+      this.refMap = snapshot.refs;
+      return snapshot;
+    }
+
     // Try to get snapshot from bridge first (more accurate)
     if (this.bridgeServer?.hasConnections()) {
       try {
@@ -221,6 +232,7 @@ export class AppController {
         return snapshot;
       } catch {
         // Fall through to native method
+        console.log('[AppController] Bridge snapshot failed, falling back to native');
       }
     }
 

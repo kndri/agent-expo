@@ -376,4 +376,18 @@ export class DeviceManager {
       throw new Error('No active device. Call boot() first.');
     }
   }
+
+  /**
+   * Get the iOS simulator manager (for native accessibility)
+   */
+  getIOSManager(): IOSSimulatorManager | null {
+    return this.activePlatform === 'ios' ? this.iosManager : null;
+  }
+
+  /**
+   * Get the Android emulator manager (for native accessibility)
+   */
+  getAndroidManager(): AndroidEmulatorManager | null {
+    return this.activePlatform === 'android' ? this.androidManager : null;
+  }
 }

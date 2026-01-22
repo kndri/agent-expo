@@ -437,6 +437,104 @@ export class IOSSimulatorManager {
   }
 
   /**
+   * Get accessibility tree using idb
+   */
+  async getAccessibilityTree(deviceId?: string): Promise<any> {
+    const id = deviceId || this.activeDeviceId;
+    if (!id) throw new Error('No device specified');
+
+    if (!(await this.checkIdbAvailable())) {
+      throw new Error('idb not available. Install with: brew install idb-companion');
+    }
+
+    try {
+      const { stdout } = await execAsync(`idb ui describe-all --udid ${id}`);
+      return this.parseIdbAccessibility(stdout);
+    } catch (error) {
+      // Try alternative idb accessibility command
+      try {
+        const { stdout } = await execAsync(`idb ui describe-point 0 0 --udid ${id}`);
+        // Fallback to simpler approach - describe full screen
+        return this.captureAccessibilityViaPoints(id);
+      } catch {
+        throw new Error(`Failed to get accessibility tree: ${error}`);
+      }
+    }
+  }
+
+  /**
+   * Parse idb accessibility output
+   */
+  private parseIdbAccessibility(output: string): any {
+    try {
+      // idb ui describe-all outputs JSON
+      return JSON.parse(output);
+    } catch {
+      // If not JSON, parse text format
+      return this.parseIdbTextFormat(output);
+    }
+  }
+
+  /**
+   * Parse idb text format accessibility
+   */
+  private parseIdbTextFormat(output: string): any {
+    const lines = output.trim().split('\n');
+    const elements: any[] = [];
+
+    for (const line of lines) {
+      // Parse format like: AXButton "Label" (x, y, width, height)
+      const match = line.match(/^(\w+)\s*"([^"]*)"\s*\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)/);
+      if (match) {
+        elements.push({
+          type: match[1],
+          label: match[2],
+          frame: {
+            x: parseInt(match[3]),
+            y: parseInt(match[4]),
+            width: parseInt(match[5]),
+            height: parseInt(match[6]),
+          },
+        });
+      }
+    }
+
+    return { elements };
+  }
+
+  /**
+   * Fallback: capture accessibility by sampling points
+   */
+  private async captureAccessibilityViaPoints(deviceId: string): Promise<any> {
+    // This is a fallback that samples key points on screen
+    // Not ideal but works when describe-all isn't available
+    const elements: any[] = [];
+    const screenWidth = 390;
+    const screenHeight = 844;
+    const step = 50;
+
+    for (let y = 0; y < screenHeight; y += step) {
+      for (let x = 0; x < screenWidth; x += step) {
+        try {
+          const { stdout } = await execAsync(
+            `idb ui describe-point ${x} ${y} --udid ${deviceId}`
+          );
+          if (stdout.trim()) {
+            const parsed = this.parseIdbAccessibility(stdout);
+            if (parsed && !elements.some(e => e.label === parsed.label)) {
+              elements.push(parsed);
+            }
+          }
+        } catch {
+          // Point may not have an element
+        }
+      }
+    }
+
+    return { elements };
+  }
+
+  /**
    * Get the active device ID
    */
   getActiveDeviceId(): string | null {

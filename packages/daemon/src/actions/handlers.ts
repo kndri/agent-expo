@@ -101,6 +101,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
       compact: command.compact,
       maxDepth: command.maxDepth,
       withScreenshot: command.withScreenshot,
+      native: command.native,
     });
 
     let screenshot: string | undefined;

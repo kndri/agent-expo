@@ -16,6 +16,7 @@ export function registerSnapshotCommand(program: Commander, client: DaemonClient
     .option('-c, --compact', 'Compact output')
     .option('--max-depth <depth>', 'Maximum tree depth', parseInt)
     .option('--with-screenshot', 'Include base64 screenshot')
+    .option('-n, --native', 'Use native accessibility APIs (idb/adb) instead of bridge')
     .action(async (opts) => {
       const command: SnapshotCommand = {
         id: uuid(),
@@ -24,6 +25,7 @@ export function registerSnapshotCommand(program: Commander, client: DaemonClient
         compact: opts.compact,
         maxDepth: opts.maxDepth,
         withScreenshot: opts.withScreenshot,
+        native: opts.native,
       };
 
       const response = await client.send(command);
