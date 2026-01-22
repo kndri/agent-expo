@@ -5,7 +5,7 @@ This file tracks progress using the Ralph Loop pattern.
 ## Current Status
 
 **Phase:** Building
-**Current Task:** #13 - Snapshot Caching
+**Current Task:** #16 - Windows Support
 **Blocker:** None
 
 ## Task Queue (Prioritized)
@@ -70,10 +70,11 @@ This file tracks progress using the Ralph Loop pattern.
 
 ### Phase 4: Performance
 
-- [ ] **#13** - Add Snapshot Caching with UI Change Invalidation
-  - Create SnapshotCache class
-  - Hook into React DevTools for invalidation
-  - Add cache control to protocol
+- [x] **#13** - Add Snapshot Caching with UI Change Invalidation ✅
+  - Created SnapshotCache class with configurable maxAge
+  - Hooked into React DevTools global hook for invalidation
+  - Added fresh and maxCacheAge options to protocol
+  - Added cache-stats and cache-invalidate CLI commands
   - [Issue](https://github.com/kndri/agent-expo/issues/13)
 
 ### Phase 5: Platform & Features (Future)
@@ -166,6 +167,14 @@ This file tracks progress using the Ralph Loop pattern.
   - Added visual testing and network mocking documentation
   - Created docs/API.md with complete API reference
   - Created docs/TROUBLESHOOTING.md with common issues
+- **Completed #13** - Snapshot caching with UI change invalidation:
+  - Created SnapshotCache class with configurable maxAge and hit/miss tracking
+  - Integrated React DevTools global hook for automatic cache invalidation
+  - Added fresh and maxCacheAge options to SnapshotCommand
+  - Added CacheStatsCommand and CacheInvalidateCommand to protocol
+  - Added cache-stats and cache-invalidate CLI commands
+  - Added --fresh and --max-cache-age flags to snapshot CLI
+  - Full integration across bridge, protocol, daemon, and CLI
 
 ---
 
