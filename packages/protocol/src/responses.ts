@@ -100,6 +100,35 @@ export interface ScreenshotResponseData extends ScreenshotResult {}
 
 export interface VisualCompareResponseData extends CompareResult {}
 
+export interface ScreenshotSaveResponseData {
+  saved: true;
+  name: string;
+  path: string;
+}
+
+export interface ScreenshotCompareResponseData {
+  matched: boolean;
+  matchPercentage: number;
+  threshold: number;
+  diffPixels: number;
+  totalPixels: number;
+  diffPath?: string;
+}
+
+export interface ScreenshotDiffResponseData {
+  diffPath: string;
+}
+
+export interface ScreenshotListResponseData {
+  baselines: string[];
+  count: number;
+}
+
+export interface ScreenshotDeleteResponseData {
+  deleted: boolean;
+  name: string;
+}
+
 export interface AssertResponseData extends AssertionResult {}
 
 export interface WaitForResponseData {

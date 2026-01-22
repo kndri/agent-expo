@@ -6,5 +6,14 @@
  */
 
 export { AgentExpoClient } from './client.js';
-export { aiTools, type AITool, type AIToolDefinition } from './ai-tools.js';
+export {
+  aiTools,
+  getClaudeTools,
+  getOpenAITools,
+  executeTools,
+  type AITool,
+  type AIToolDefinition,
+  type ToolCall,
+  type ToolResult,
+} from './ai-tools.js';
 export type { ClientConfig, ClientStatus } from './client.js';

@@ -4,6 +4,8 @@
  * Tool definitions for AI agents (Claude, GPT, etc.)
  */
 
+import type { AgentExpoClient } from './client.js';
+
 export interface AIToolDefinition {
   name: string;
   description: string;
@@ -17,6 +19,17 @@ export interface AIToolDefinition {
 export interface AITool {
   definition: AIToolDefinition;
   execute: (params: Record<string, unknown>) => Promise<unknown>;
+}
+
+export interface ToolCall {
+  name: string;
+  input: Record<string, unknown>;
+}
+
+export interface ToolResult {
+  name: string;
+  result?: unknown;
+  error?: string;
 }
 
 /**
@@ -252,6 +265,164 @@ export const aiTools: AIToolDefinition[] = [
       required: ['ref', 'condition'],
     },
   },
+  {
+    name: 'mobile_clear',
+    description: 'Clear text from an input field.',
+    parameters: {
+      type: 'object',
+      properties: {
+        ref: {
+          type: 'string',
+          description: 'Element ref of the input field to clear',
+        },
+      },
+      required: ['ref'],
+    },
+  },
+  {
+    name: 'mobile_double_tap',
+    description: 'Double tap on an element.',
+    parameters: {
+      type: 'object',
+      properties: {
+        ref: {
+          type: 'string',
+          description: 'Element ref to double tap',
+        },
+      },
+      required: ['ref'],
+    },
+  },
+  {
+    name: 'mobile_long_press',
+    description: 'Long press on an element.',
+    parameters: {
+      type: 'object',
+      properties: {
+        ref: {
+          type: 'string',
+          description: 'Element ref to long press',
+        },
+        duration: {
+          type: 'number',
+          description: 'Press duration in milliseconds (default: 1000)',
+        },
+      },
+      required: ['ref'],
+    },
+  },
+  {
+    name: 'mobile_mock_api',
+    description: 'Mock an API response for testing. Subsequent requests matching the pattern will return the mocked response.',
+    parameters: {
+      type: 'object',
+      properties: {
+        pattern: {
+          type: 'string',
+          description: 'URL pattern to match (e.g., /api/users)',
+        },
+        status: {
+          type: 'number',
+          description: 'HTTP status code (default: 200)',
+        },
+        body: {
+          type: 'object',
+          description: 'Response body (will be JSON encoded)',
+        },
+        delay: {
+          type: 'number',
+          description: 'Delay before responding in milliseconds',
+        },
+      },
+      required: ['pattern'],
+    },
+  },
+  {
+    name: 'mobile_clear_mocks',
+    description: 'Clear all API mocks.',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'mobile_reload',
+    description: 'Reload the mobile app (terminate and relaunch).',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'mobile_devices',
+    description: 'List available simulators/emulators.',
+    parameters: {
+      type: 'object',
+      properties: {
+        platform: {
+          type: 'string',
+          enum: ['ios', 'android'],
+          description: 'Filter by platform',
+        },
+      },
+    },
+  },
+  {
+    name: 'mobile_set_location',
+    description: 'Set mock GPS location on the device.',
+    parameters: {
+      type: 'object',
+      properties: {
+        latitude: {
+          type: 'number',
+          description: 'Latitude coordinate',
+        },
+        longitude: {
+          type: 'number',
+          description: 'Longitude coordinate',
+        },
+      },
+      required: ['latitude', 'longitude'],
+    },
+  },
+  {
+    name: 'mobile_swipe',
+    description: 'Perform a swipe gesture from one point to another.',
+    parameters: {
+      type: 'object',
+      properties: {
+        fromX: {
+          type: 'number',
+          description: 'Starting X coordinate',
+        },
+        fromY: {
+          type: 'number',
+          description: 'Starting Y coordinate',
+        },
+        toX: {
+          type: 'number',
+          description: 'Ending X coordinate',
+        },
+        toY: {
+          type: 'number',
+          description: 'Ending Y coordinate',
+        },
+        duration: {
+          type: 'number',
+          description: 'Duration in milliseconds',
+        },
+      },
+      required: ['fromX', 'fromY', 'toX', 'toY'],
+    },
+  },
+  {
+    name: 'mobile_home',
+    description: 'Press the home button to go to the device home screen.',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
 ];
 
 /**
@@ -268,8 +439,189 @@ export function getOpenAITools(): Array<{
 }
 
 /**
- * Get tool definitions for Claude tools format
+ * Get tool definitions for Claude tools format (Anthropic API)
  */
-export function getClaudeTools(): AIToolDefinition[] {
-  return aiTools;
+export function getClaudeTools(): Array<{
+  name: string;
+  description: string;
+  input_schema: {
+    type: 'object';
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}> {
+  return aiTools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    input_schema: tool.parameters,
+  }));
+}
+
+/**
+ * Execute tool calls from AI responses
+ *
+ * @param client - AgentExpoClient instance
+ * @param toolCalls - Array of tool calls from AI
+ * @returns Array of tool results
+ *
+ * @example
+ * ```typescript
+ * const client = new AgentExpoClient();
+ * await client.connect();
+ *
+ * const toolCalls = [
+ *   { name: 'mobile_snapshot', input: { interactive: true } },
+ *   { name: 'mobile_tap', input: { ref: '@e1' } },
+ * ];
+ *
+ * const results = await executeTools(client, toolCalls);
+ * ```
+ */
+export async function executeTools(
+  client: AgentExpoClient,
+  toolCalls: ToolCall[]
+): Promise<ToolResult[]> {
+  const results: ToolResult[] = [];
+
+  for (const call of toolCalls) {
+    try {
+      const result = await executeSingleTool(client, call);
+      results.push({ name: call.name, result });
+    } catch (error) {
+      results.push({
+        name: call.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Execute a single tool call
+ */
+async function executeSingleTool(
+  client: AgentExpoClient,
+  call: ToolCall
+): Promise<unknown> {
+  const { name, input } = call;
+
+  switch (name) {
+    case 'mobile_launch':
+      return client.launch({
+        platform: input.platform as 'ios' | 'android',
+        device: input.device as string | undefined,
+        bundleId: input.bundleId as string | undefined,
+      });
+
+    case 'mobile_snapshot':
+      return client.snapshot({
+        interactive: input.interactive as boolean | undefined,
+        withScreenshot: input.withScreenshot as boolean | undefined,
+      });
+
+    case 'mobile_tap':
+      return client.tap(input.ref as string);
+
+    case 'mobile_fill':
+      return client.fill(
+        input.ref as string,
+        input.text as string,
+        input.clear as boolean | undefined
+      );
+
+    case 'mobile_clear':
+      return client.clear(input.ref as string);
+
+    case 'mobile_double_tap':
+      return client.doubleTap(input.ref as string);
+
+    case 'mobile_long_press':
+      return client.longPress(
+        input.ref as string,
+        input.duration as number | undefined
+      );
+
+    case 'mobile_scroll':
+      return client.scroll(input.direction as 'up' | 'down' | 'left' | 'right', {
+        toRef: input.toRef as string | undefined,
+      });
+
+    case 'mobile_swipe':
+      return client.swipe(
+        { x: input.fromX as number, y: input.fromY as number },
+        { x: input.toX as number, y: input.toY as number },
+        input.duration as number | undefined
+      );
+
+    case 'mobile_navigate':
+      return client.navigate(input.url as string);
+
+    case 'mobile_back':
+      return client.back();
+
+    case 'mobile_home':
+      return client.home();
+
+    case 'mobile_screenshot':
+      return client.screenshot();
+
+    case 'mobile_assert':
+      return client.assert(
+        input.ref as string,
+        input.assertion as string,
+        input.value as string | undefined
+      );
+
+    case 'mobile_wait_for':
+      return client.waitFor(
+        input.ref as string,
+        input.condition as 'visible' | 'hidden' | 'exists' | 'notExists',
+        input.timeout as number | undefined
+      );
+
+    case 'mobile_api_requests':
+      return client.getRequests({
+        url: input.filter as string | undefined,
+        method: input.method as string | undefined,
+      });
+
+    case 'mobile_supabase_calls':
+      return client.getSupabaseCalls({
+        table: input.table as string | undefined,
+        operation: input.operation as string | undefined,
+      });
+
+    case 'mobile_convex_calls':
+      return client.getConvexCalls({
+        functionName: input.functionName as string | undefined,
+        type: input.type as 'query' | 'mutation' | 'action' | undefined,
+      });
+
+    case 'mobile_mock_api':
+      return client.mockResponse(input.pattern as string, {
+        status: input.status as number | undefined,
+        body: input.body as string | Record<string, unknown> | undefined,
+        delay: input.delay as number | undefined,
+      });
+
+    case 'mobile_clear_mocks':
+      return client.clearMocks();
+
+    case 'mobile_reload':
+      return client.reload();
+
+    case 'mobile_devices':
+      return client.listDevices(input.platform as 'ios' | 'android' | undefined);
+
+    case 'mobile_set_location':
+      return client.setLocation(
+        input.latitude as number,
+        input.longitude as number
+      );
+
+    default:
+      throw new Error(`Unknown tool: ${name}`);
+  }
 }

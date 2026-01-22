@@ -185,6 +185,37 @@ export const VisualCompareCommand = BaseCommand.extend({
 });
 
 // ============================================
+// Visual Testing Commands
+// ============================================
+
+export const ScreenshotSaveCommand = BaseCommand.extend({
+  action: z.literal('screenshotSave'),
+  name: z.string(), // Baseline name
+});
+
+export const ScreenshotCompareCommand = BaseCommand.extend({
+  action: z.literal('screenshotCompare'),
+  name: z.string(), // Baseline name to compare against
+  threshold: z.number().optional(), // Match percentage required (0-100, default 95)
+  generateDiff: z.boolean().optional(), // Generate diff image
+});
+
+export const ScreenshotDiffCommand = BaseCommand.extend({
+  action: z.literal('screenshotDiff'),
+  name: z.string(), // Baseline name
+  outputPath: z.string().optional(), // Where to save diff image
+});
+
+export const ScreenshotListCommand = BaseCommand.extend({
+  action: z.literal('screenshotList'),
+});
+
+export const ScreenshotDeleteCommand = BaseCommand.extend({
+  action: z.literal('screenshotDelete'),
+  name: z.string(),
+});
+
+// ============================================
 // Assertion Commands
 // ============================================
 
@@ -358,6 +389,11 @@ export const Command = z.discriminatedUnion('action', [
   // Screenshot & Visual
   ScreenshotCommand,
   VisualCompareCommand,
+  ScreenshotSaveCommand,
+  ScreenshotCompareCommand,
+  ScreenshotDiffCommand,
+  ScreenshotListCommand,
+  ScreenshotDeleteCommand,
   // Assertions
   AssertCommand,
   WaitForCommand,

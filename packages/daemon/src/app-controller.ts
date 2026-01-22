@@ -23,6 +23,7 @@ import type {
 import { DeviceManager } from './simulator/index.js';
 import type { BridgeServer } from './bridge/server.js';
 import { SnapshotEngine } from './snapshot/engine.js';
+import { VisualComparator, type CompareOptions, type ComparisonResult } from './visual/comparator.js';
 
 export interface LaunchConfig {
   platform: Platform;
@@ -50,12 +51,14 @@ export class AppController {
   private deviceManager: DeviceManager;
   private bridgeServer: BridgeServer | null = null;
   private snapshotEngine: SnapshotEngine;
+  private visualComparator: VisualComparator;
   private currentBundleId: string | null = null;
   private refMap: RefMap = {};
 
   constructor() {
     this.deviceManager = new DeviceManager();
     this.snapshotEngine = new SnapshotEngine();
+    this.visualComparator = new VisualComparator();
   }
 
   /**
@@ -487,32 +490,50 @@ export class AppController {
   /**
    * Get tracked network requests
    */
-  getRequests(filter?: { url?: string; method?: string; status?: number }): TrackedRequest[] {
-    // Note: In the future, this could be async to fetch from bridge
-    // For now, return empty if no bridge
+  async getRequests(filter?: { url?: string; method?: string; status?: number }): Promise<TrackedRequest[]> {
     if (!this.bridgeServer?.hasConnections()) {
       return [];
     }
-    // Would need to make this async to actually fetch from bridge
-    return [];
+
+    try {
+      const requests = await this.bridgeServer.getRequests();
+
+      // Apply filters
+      let filtered = requests as TrackedRequest[];
+
+      if (filter?.url) {
+        filtered = filtered.filter((r) => r.request.url.includes(filter.url!));
+      }
+      if (filter?.method) {
+        filtered = filtered.filter((r) => r.request.method === filter.method);
+      }
+      if (filter?.status) {
+        filtered = filtered.filter((r) => r.response?.status === filter.status);
+      }
+
+      return filtered;
+    } catch (error) {
+      console.error('[AppController] Failed to get network requests:', error);
+      return [];
+    }
   }
 
   /**
    * Mock a network response
    */
-  mockResponse(pattern: string, response: object): void {
+  async mockResponse(pattern: string, response: object): Promise<void> {
     if (!this.bridgeServer?.hasConnections()) {
       throw new Error('Mock requires bridge connection');
     }
-    this.bridgeServer.addMock(pattern, response).catch(console.error);
+    await this.bridgeServer.addMock(pattern, response);
   }
 
   /**
    * Clear all mocks
    */
-  clearMocks(): void {
+  async clearMocks(): Promise<void> {
     if (this.bridgeServer?.hasConnections()) {
-      this.bridgeServer.clearMocks().catch(console.error);
+      await this.bridgeServer.clearMocks();
     }
   }
 
@@ -523,23 +544,57 @@ export class AppController {
   /**
    * Get Supabase calls
    */
-  getSupabaseCalls(filter?: { table?: string; operation?: string }): SupabaseCall[] {
+  async getSupabaseCalls(filter?: { table?: string; operation?: string }): Promise<SupabaseCall[]> {
     if (!this.bridgeServer?.hasConnections()) {
       return [];
     }
-    // Would need to make this async to actually fetch from bridge
-    return [];
+
+    try {
+      const calls = await this.bridgeServer.getSupabaseCalls();
+
+      // Apply filters
+      let filtered = calls as SupabaseCall[];
+
+      if (filter?.table) {
+        filtered = filtered.filter((c) => c.table === filter.table);
+      }
+      if (filter?.operation) {
+        filtered = filtered.filter((c) => c.operation === filter.operation);
+      }
+
+      return filtered;
+    } catch (error) {
+      console.error('[AppController] Failed to get Supabase calls:', error);
+      return [];
+    }
   }
 
   /**
    * Get Convex calls
    */
-  getConvexCalls(filter?: { functionName?: string; type?: string }): ConvexCall[] {
+  async getConvexCalls(filter?: { functionName?: string; type?: string }): Promise<ConvexCall[]> {
     if (!this.bridgeServer?.hasConnections()) {
       return [];
     }
-    // Would need to make this async to actually fetch from bridge
-    return [];
+
+    try {
+      const calls = await this.bridgeServer.getConvexCalls();
+
+      // Apply filters
+      let filtered = calls as ConvexCall[];
+
+      if (filter?.functionName) {
+        filtered = filtered.filter((c) => c.functionName.includes(filter.functionName!));
+      }
+      if (filter?.type) {
+        filtered = filtered.filter((c) => c.type === filter.type);
+      }
+
+      return filtered;
+    } catch (error) {
+      console.error('[AppController] Failed to get Convex calls:', error);
+      return [];
+    }
   }
 
   // ============================================
@@ -658,6 +713,60 @@ export class AppController {
    */
   async setLocation(latitude: number, longitude: number): Promise<void> {
     await this.deviceManager.setLocation(latitude, longitude);
+  }
+
+  // ============================================
+  // Visual Testing
+  // ============================================
+
+  /**
+   * Save a screenshot as baseline
+   */
+  async saveBaseline(name: string, imageBuffer: Buffer): Promise<string> {
+    return this.visualComparator.saveBaseline(name, imageBuffer);
+  }
+
+  /**
+   * Compare current screenshot with baseline
+   */
+  async compareWithBaseline(
+    name: string,
+    currentBuffer: Buffer,
+    options?: CompareOptions
+  ): Promise<ComparisonResult> {
+    return this.visualComparator.compare(name, currentBuffer, options);
+  }
+
+  /**
+   * Generate diff image between baseline and current
+   */
+  async generateDiff(
+    name: string,
+    currentBuffer: Buffer,
+    outputPath?: string
+  ): Promise<string> {
+    return this.visualComparator.generateDiff(name, currentBuffer, outputPath);
+  }
+
+  /**
+   * List all saved baselines
+   */
+  listBaselines(): string[] {
+    return this.visualComparator.listBaselines();
+  }
+
+  /**
+   * Delete a baseline
+   */
+  deleteBaseline(name: string): boolean {
+    return this.visualComparator.deleteBaseline(name);
+  }
+
+  /**
+   * Check if baseline exists
+   */
+  hasBaseline(name: string): boolean {
+    return this.visualComparator.hasBaseline(name);
   }
 
   // ============================================

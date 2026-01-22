@@ -298,6 +298,68 @@ export class AgentExpoClient {
   }
 
   /**
+   * Clear text from input
+   */
+  async clear(ref: string): Promise<void> {
+    const response = await this.send({
+      id: this.generateId(),
+      action: 'clear',
+      ref,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+  }
+
+  /**
+   * Type text (without focusing on specific element)
+   */
+  async type(text: string, delay?: number): Promise<void> {
+    const response = await this.send({
+      id: this.generateId(),
+      action: 'type',
+      text,
+      delay,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+  }
+
+  /**
+   * Double tap an element
+   */
+  async doubleTap(ref: string): Promise<void> {
+    const response = await this.send({
+      id: this.generateId(),
+      action: 'doubleTap',
+      ref,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+  }
+
+  /**
+   * Long press an element
+   */
+  async longPress(ref: string, duration?: number): Promise<void> {
+    const response = await this.send({
+      id: this.generateId(),
+      action: 'longPress',
+      ref,
+      duration,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+  }
+
+  /**
    * Scroll
    */
   async scroll(
@@ -522,6 +584,111 @@ export class AgentExpoClient {
     }
 
     return response.data.calls;
+  }
+
+  /**
+   * Mock a network response
+   */
+  async mockResponse(
+    pattern: string,
+    response: {
+      status?: number;
+      body?: string | Record<string, unknown>;
+      headers?: Record<string, string>;
+      delay?: number;
+    }
+  ): Promise<void> {
+    const resp = await this.send({
+      id: this.generateId(),
+      action: 'networkMock',
+      pattern,
+      response,
+    });
+
+    if (!resp.success) {
+      throw new Error(resp.error);
+    }
+  }
+
+  /**
+   * Clear all mocks
+   */
+  async clearMocks(): Promise<void> {
+    const response = await this.send({
+      id: this.generateId(),
+      action: 'networkClearMocks',
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+  }
+
+  // ============================================
+  // Device
+  // ============================================
+
+  /**
+   * List available devices
+   */
+  async listDevices(platform?: Platform): Promise<Device[]> {
+    const response = await this.send<{ devices: Device[] }>({
+      id: this.generateId(),
+      action: 'deviceList',
+      platform,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
+    return response.data.devices;
+  }
+
+  /**
+   * Get current device info
+   */
+  async getDevice(): Promise<Device | null> {
+    const response = await this.send<{ device?: Device }>({
+      id: this.generateId(),
+      action: 'deviceInfo',
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
+    return response.data.device || null;
+  }
+
+  /**
+   * Set mock location
+   */
+  async setLocation(latitude: number, longitude: number): Promise<void> {
+    const response = await this.send({
+      id: this.generateId(),
+      action: 'setLocation',
+      latitude,
+      longitude,
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+  }
+
+  /**
+   * Reload the app
+   */
+  async reload(): Promise<void> {
+    const response = await this.send({
+      id: this.generateId(),
+      action: 'reload',
+    });
+
+    if (!response.success) {
+      throw new Error(response.error);
+    }
   }
 
   // ============================================

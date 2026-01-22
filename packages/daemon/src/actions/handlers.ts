@@ -30,6 +30,11 @@ import type {
   SetLocationResponseData,
   StatusResponseData,
   PingResponseData,
+  ScreenshotSaveResponseData,
+  ScreenshotCompareResponseData,
+  ScreenshotDiffResponseData,
+  ScreenshotListResponseData,
+  ScreenshotDeleteResponseData,
 } from '@agent-expo/protocol';
 import { success, error, ErrorCode } from '@agent-expo/protocol';
 import type { AppController } from '../app-controller.js';
@@ -273,8 +278,58 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   },
 
   async visualCompare(command: any, controller: AppController): Promise<Response<any>> {
-    // Would need image comparison library
-    return error(command.id, 'Visual compare not yet implemented', ErrorCode.UNKNOWN);
+    // Use the new visual testing commands instead
+    return error(command.id, 'Use screenshotCompare command instead', ErrorCode.UNKNOWN);
+  },
+
+  // ============================================
+  // Visual Testing
+  // ============================================
+
+  async screenshotSave(command: any, controller: AppController): Promise<Response<ScreenshotSaveResponseData>> {
+    const buffer = await controller.screenshot();
+    const path = await controller.saveBaseline(command.name, buffer);
+
+    return success(command.id, {
+      saved: true,
+      name: command.name,
+      path,
+    });
+  },
+
+  async screenshotCompare(command: any, controller: AppController): Promise<Response<ScreenshotCompareResponseData>> {
+    const buffer = await controller.screenshot();
+    const result = await controller.compareWithBaseline(command.name, buffer, {
+      threshold: command.threshold,
+      generateDiff: command.generateDiff,
+    });
+
+    return success(command.id, result);
+  },
+
+  async screenshotDiff(command: any, controller: AppController): Promise<Response<ScreenshotDiffResponseData>> {
+    const buffer = await controller.screenshot();
+    const diffPath = await controller.generateDiff(command.name, buffer, command.outputPath);
+
+    return success(command.id, { diffPath });
+  },
+
+  async screenshotList(command: any, controller: AppController): Promise<Response<ScreenshotListResponseData>> {
+    const baselines = controller.listBaselines();
+
+    return success(command.id, {
+      baselines,
+      count: baselines.length,
+    });
+  },
+
+  async screenshotDelete(command: any, controller: AppController): Promise<Response<ScreenshotDeleteResponseData>> {
+    const deleted = controller.deleteBaseline(command.name);
+
+    return success(command.id, {
+      deleted,
+      name: command.name,
+    });
   },
 
   // ============================================
@@ -321,7 +376,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // ============================================
 
   async networkRequests(command: any, controller: AppController): Promise<Response<NetworkRequestsResponseData>> {
-    const requests = controller.getRequests({
+    const requests = await controller.getRequests({
       url: command.filter,
       method: command.method,
       status: command.status,
@@ -336,12 +391,12 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   },
 
   async networkMock(command: any, controller: AppController): Promise<Response<NetworkMockResponseData>> {
-    controller.mockResponse(command.pattern, command.response);
+    await controller.mockResponse(command.pattern, command.response);
     return success(command.id, { mocked: true, pattern: command.pattern });
   },
 
   async networkClearMocks(command: any, controller: AppController): Promise<Response<NetworkClearMocksResponseData>> {
-    controller.clearMocks();
+    await controller.clearMocks();
     return success(command.id, { cleared: true, count: 0 });
   },
 
@@ -350,7 +405,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // ============================================
 
   async supabaseCalls(command: any, controller: AppController): Promise<Response<SupabaseCallsResponseData>> {
-    const calls = controller.getSupabaseCalls({
+    const calls = await controller.getSupabaseCalls({
       table: command.table,
       operation: command.operation,
     });
@@ -373,7 +428,7 @@ const handlers: Record<string, ActionHandler<any, any>> = {
   // ============================================
 
   async convexCalls(command: any, controller: AppController): Promise<Response<ConvexCallsResponseData>> {
-    const calls = controller.getConvexCalls({
+    const calls = await controller.getConvexCalls({
       functionName: command.functionName,
       type: command.type,
     });
